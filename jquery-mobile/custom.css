@@ -1,0 +1,62 @@
+@charset "utf-8";
+/* CSS Document */
+
+/* GLOBAL STYLES
+------------------------------*/
+/*html, body {
+    overflow-x: hidden !important;
+    position: relative !important;
+}
+*/
+.ui-content {
+	background: transparent !important; /*used to remove background from the content. I did this so that we don't have the body bg and the content bg overlapping */
+	border: none !important; /* same thing as the bg, I removed the unnecesary border it had */
+	margin-top: 15px; /* pushes content below the logo */
+	overflow: none;
+}
+
+/* LOGO AREA
+----------------------------*/
+.logo {
+	width: 316px;
+	height: 139px;
+	margin: 0 auto -110px auto;
+	position: relative;
+	z-index: 2;
+}
+
+.ui-header {
+	overflow: none;
+}
+
+/* FOOTER AREA - where the nav/menu items will be
+---------------------------------------------*/
+
+/* style for active button, overrides JQM default */
+.ui-btn-active {
+	-webkit-box-shadow: inset 0px 1px 5px 3px #310000 !important;
+	box-shadow: inset 0px 1px 5px 3px #310000 !important;
+	-moz-box-shadow: inset 0px 1px 5px 3px #310000 !important;
+	background-color: #3F0000 !important;
+}
+
+.tko-nav img {
+	margin-bottom: 5px;
+}
+
+.tko-nav a {
+	text-align: center !important;
+	text-decoration: none;
+	display: block;
+}
+
+.ui-btn-text {
+	color: #eee;
+}
+
+.ui-btn-inner {
+	border-color: rgba(255,255,255,0.2);
+}
+
+.ui-bar-a {
+	border-color: #640000;
