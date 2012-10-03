@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+</head>
+    
+<body>
+	
+	<div data-role="page" id="sharePage" data-theme="a" data-add-back-btn="true">
+	
+		<div data-role="header" data-id="head1" data-position="fixed">
+			<div class="logo">
+				<img src="jquery-mobile/images/tko-head.png" width="316" height="68" alt="TKO Logo">
+			</div>
+		</div><!-- /header -->
+				
+		<div data-role="content" id="share">	
+			<div id="fbLoginArea"> <!-- If we don't have a user we will show this -->
+				<div style='height:70px'></div>
+				<div id="fbLoginButton" class="btn">Login</div>
+	        </div>
+	        <div id="fbStatus"> <!-- if we do have a user we will show this -->
+	        <div id='fbStatusHold' style='text-align:center; width:100%;'>
+				<div style='height:50px'></div>
+				<!-- <img src='img/loader.gif' id="fbInfo"/></div> -->
+				<div>Type your Message Here:</div>
+	        	<textarea id="fbStatusText"></textarea>
+	            <div id="fbStatusButton" class="btn">Share</div>
+	        </div>
+		</div><!-- /content -->
+		
+		<div data-role="footer" data-id="tkoFooter" data-position="fixed">
+			<div data-role="navbar">
+				<ul>
+					<li>
+						<a href="index.html" class="ui-btn-active" data-theme="a"><img src="jquery-mobile/images/home.png" width="25" height="25"><br>
+						HOME</a>
+					</li>
+					<li>
+						<a href="menu.html" data-theme="a"><img src="jquery-mobile/images/menu.png" width="25" height="25"><br>
+						MENU</a>
+					</li>
+					<li>
+						<a href="events.html" data-theme="a"><img src="jquery-mobile/images/events.png" width="25" height="25"><br>
+						EVENTS</a>
+					</li>
+					<li>
+						<a href="pictures.html" data-theme="a"><img src="jquery-mobile/images/pictures.png" width="25" height="25"><br>
+						PICS</a>
+					</li>
+					<li>
+						<a href="music.html" data-theme="a"><img src="jquery-mobile/images/music.png" width="25" height="25"><br>
+						MUSIC</a>
+					</li>
+				</ul>
+			</div><!-- /navbar -->
+		</div><!-- /footer -->
+	</div><!-- /page -->
+	
+</body>
+</html>

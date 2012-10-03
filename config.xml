@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+    <widget xmlns = "http://www.w3.org/ns/widgets"
+        xmlns:gap = "http://phonegap.com/ns/1.0"
+        id        = "com.brianpiltin.TKOLaredo"
+        versionCode="8" 
+        version   = "0.9.1">
+
+    <!-- versionCode is optional and Android only -->
+
+    <name>TKO Laredo</name>
+
+    <description>
+        Custom restaurant application for TKO Bar and Grill, Laredo TX. 
+		Copyright (C) 2012 Brian L. Piltin. All rights reserved.
+    </description>
+
+    <author href="https://www.differentdezine.com" email="support@differentdezine.com">
+        Brian L. Piltin
+    </author>
+
+	<preference name="webviewbounce" value="false" />
+	<preference name="orientation" value="both" />
+	<!--
+	<preference name="target-device" value="universal" />
+	<preference name="fullscreen" value="false" />
+	<preference name="prerendered-icon" value="true" />
+	<preference name="exit-on-suspend" value="true" />
+	<preference name="show-splash-screen-spinner" value="true" />
+	<preference name="auto-hide-splash-screen" value="true" />
+	<preference name="android-minSdkVersion" value="10" />
+	<preference name="android-installLocation" value="auto" />
+	-->
+	
+	<icon src="icon.png" />
+	<icon src="icons/ios/icon.png" width="57" height="57" />
+	<icon src="icons/ios/icon-72.png" gap:platform="ios" width="72" height="72" />
+	<icon src="icons/ios/icon_at_2x.png" width="114" height="114" />
+	<icon src="icons/android/ldpi.png" gap:platform="android" gap:density="ldpi" />
+	<icon src="icons/android/mdpi.png" gap:platform="android" gap:density="mdpi" />
+	<icon src="icons/android/hdpi.png" gap:platform="android" gap:density="hdpi" />
+	<icon src="icons/android/xhdpi.png" gap:platform="android" gap:density="xhdpi" />
+	<icon src="icons/bb/icon.png" gap:platform="blackberry" />
+	<icon src="icons/bb/icon_hover.png" gap:platform="blackberry" gap:state="hover"/>
+	<icon src="icons/winphone/icon.png" gap:platform="winphone" />
+	<icon src="icons/winphone/tileicon.png" gap:platform="winphone" gap:role="background" />
+	<icon src="icons/webos/icon.png" gap:platform="webos" />
+	<icon src="icons/webos/miniicon.png" gap:platform="webos" gap:role="mini" />
+	
+	<gap:splash src="splash.png" />
+	<gap:splash src="splash/ios/Default.png" width="320" height="480" />
+	<gap:splash src="splash/ios/Default_at_2x.png" width="640" height="960" />
+	<gap:splash src="splash/ios/Default-Landscape.png" width="1024" height="768" />
+	<gap:splash src="splash/ios/Default-Portrait.png" width="768" height="1024" />
+	<gap:splash src="splash/android/ldpi.png" gap:platform="android" gap:density="ldpi" />
+	<gap:splash src="splash/android/mdpi.png" gap:platform="android" gap:density="mdpi" />
+	<gap:splash src="splash/android/hdpi.png" gap:platform="android" gap:density="hdpi" />
+	<gap:splash src="splash/android/xhdpi.png" gap:platform="android" gap:density="xhdpi" />
+	<gap:splash src="splash/bb/splash.png" gap:platform="blackberry" />
+	<gap:splash src="splash/winphone/splash.jpg" gap:platform="winphone" />
+	<gap:plugin name="ChildBrowser" /> <!-- latest release -->
+	<gap:plugin name="FacebookAPI">
+	    <param name="APIKey" value="512052125490353" />
+	    <param name="APISecret" value="5c4c96b4ac4be884c4a62b946d81971e" />
+	</gap:plugin>
+	
+	<access origin="*" /> 
+	
+</widget>
