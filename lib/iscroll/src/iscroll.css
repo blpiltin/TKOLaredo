@@ -5,12 +5,13 @@
 	position: relative; /* On older OS versions "position" and "z-index" must be defined, */
 	z-index:1; /* it seems that recent webkit is less picky and works anyway. */
 	overflow:hidden;
-	background: #aaa;
-	/* -webkit-border-radius:10px;
+	padding: 0px;
+	/*
+	-webkit-border-radius:10px;
 	-moz-border-radius: 10px;
 	-o-border-radius: 10px;
-	border-radius: 10px;*/
-	background:#000000;
+	border-radius: 10px;
+*/
 }
 
 #scroller {
@@ -29,7 +30,7 @@
 	height: 100%;
 	padding: 0;
 	margin: 0;
-	text-align: left;
+	text-align: center;
 	overflow:hidden;
 }
 
@@ -42,7 +43,6 @@
 	float: left;
 	width: 160px;
 	height: 160px;
-	text-align: center;
 	font-family: georgia;
 	font-size: 18px;
 	line-height: 140%;
@@ -54,8 +54,8 @@
 	overflow:hidden;
 }
 #nav {
-	width: 300px;
-	float: left;
+	width: 96%;
+	margin: 0 auto;
 }
 
 #prev, #next {
@@ -63,7 +63,6 @@
 	font-weight: bold;
 	font-size: 14px;
 	padding: 5px 0;
-	width: 80px;
 }
 
 #next {

@@ -18,9 +18,8 @@
 /* LOGO AREA
 ----------------------------*/
 .logo {
-	width: 316px;
-	height: 139px;
-	margin: 0 auto -110px auto;
+	width: 250px;
+	margin: 0 auto -20px auto;
 	position: relative;
 	z-index: 2;
 }
@@ -60,3 +59,26 @@
 
 .ui-bar-a {
 	border-color: #640000;
+}
+
+/* Menu Items styles
+------------------------------*/
+.menuItemDetailsTitle {
+	font-size: 16pt;
+	font-weight: bold;
+	color: #FF9;
+}
+
+.menuItemDetailsImage {
+	width: 275px;
+	height: 150px;
+	margin: 10px auto;
+	border: 1px solid red;
+}
+
+.menuItemDetailsPrice {
+	margin-top: 10px;
+	font-weight: bold;
+	color: #900;
+	font-size: 14pt;
+}
