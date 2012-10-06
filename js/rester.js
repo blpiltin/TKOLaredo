@@ -137,6 +137,7 @@ var Rester = {
 			// $.mobile.touchOverflowEnabled = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
+			$.mobile.phonegapNavigationEnabled = true;
 		});
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
@@ -600,7 +601,7 @@ var Rester = {
 	
 	loadMusicPage: function() {
 		
-		RestUtils.debug("Rester.laodMusicPage()", "Loading music usinc SCPLayer.");
+		RestUtils.debug("Rester.laodMusicPage()", "Loading music using SC-PLayer.");
 				
 		$('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
 		$('a.sc-player, div.sc-player').scPlayer();
