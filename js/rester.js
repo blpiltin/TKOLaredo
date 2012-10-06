@@ -58,7 +58,7 @@ var Rester = {
 	dataType: "jsonp",
 	
 	// The maximum number of photos on the front page scroll
-	MAX_SCROLL: 5,
+	MAX_SCROLL: 7,
 	// The current number of photos in the front page scroll
 	scrollSize: 0,
 	
@@ -136,6 +136,7 @@ var Rester = {
 			$.mobile.defaultPageTransition = 'slide';
 			// $.mobile.touchOverflowEnabled = true;
 			$.mobile.pushStateEnabled = false;
+			$.mobile.transitionFallbacks.slideout = "none";
 		});
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
@@ -275,13 +276,9 @@ var Rester = {
 							$('#indicator').html(indicator);
 							Rester.fixScroller();
 							window.myScroll = new iScroll('wrapper', {
-								snap: true,
-								momentum: false,
+								snap: false,
+								momentum: true,
 								hScrollbar: false,
-								onScrollEnd: function() {
-									document.querySelector('#indicator > li.active').className = '';
-									document.querySelector('#indicator > li:nth-child(' + (this.currPageX + 1) + ')').className = 'active';
-								}
 							});
 						}
 					},
@@ -304,13 +301,17 @@ var Rester = {
 	
 	fixScroller: function() {
 
-		$('#wrapper').css('height', $(window).height() / 3 + 'px');
-		$('#wrapper').css("width", $(window).width() + 'px');
+		// $('#wrapper').css('height', $(window).height() / 3 + 'px');
+		// $('#wrapper').css("width", $(window).width() + 'px');
 		// $('#scroller').css("width", $('#scroller li').css("width") * scrollSize + 'px');
-		$('#scroller').css("width", ($(window).width() * this.scrollSize) + 'px');
-		$('#scroller li').css("height", $(window).height() / 3 + 'px');
-		$('#scroller li').css("width", $(window).width() + 'px');
-		$('#scroller li img').css("height", $(window).height() / 3 + 'px');
+		// $('#scroller').css("width", ($(window).width() * this.scrollSize) + 'px');
+		var scrollStr = $('#scroller li').css('width');
+		var scrollWidth = scrollStr.substring(0, scrollStr.length - 2);
+		RestUtils.debug('Rester.fixScroller()', 'Scroller size = ' + scrollWidth);
+		$('#scroller').css("width", scrollWidth * this.scrollSize);
+		// $('#scroller li').css("height", $(window).height() / 3 + 'px');
+		// $('#scroller li').css("width", $(window).width() + 'px');
+		// $('#scroller li img').css("height", $(window).height() / 3 + 'px');
 		//$('#nav').css("width", $(window).width());
 	},
 	
