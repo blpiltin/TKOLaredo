@@ -4,7 +4,9 @@
   background: -moz-linear-gradient(top, black, #ccc 0px, #fff 70%);
   background: -webkit-gradient(linear, left top, left 70%, from(black), color-stop(0%, #ccc), to(#fff));
   color: #333;
+  /*
   font-size: 0.6em;
+  */
   line-height: 1.6em;
 }
 

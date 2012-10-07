@@ -14,7 +14,7 @@ body{
 	color:#8b8b8b;
 }
 
-#page{
+#page {
 /*	width:550px;*/
 	margin: 100px auto 100px;
 }
@@ -52,6 +52,10 @@ h1 span{
 }
 
 /* The wall post items */
+.facebookWall ul {
+	width: 100%;
+}
+
 
 .facebookWall li{
 	background: url('../img/divider.png') no-repeat center bottom;
@@ -80,9 +84,17 @@ h1 span{
 /* The .status div container */
 
 .facebookWall .status{
-	width:420px;
-	padding-left:65px;
+	padding-left:72px;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	text-align: left;
 }
+
+div#wall p.message {
+	font-size: 14px;
+}
+
 
 /* Link share attachment */
 
@@ -114,16 +126,6 @@ h1 span{
 }
 
 /* Generic demo page styles */
-
-a, a:visited {
-	text-decoration:none;
-	outline:none;
-	color:#1482bb;
-}
-
-a:hover{
-	text-decoration:underline;
-}
 
 #footer{
 	background-color:#212121;
@@ -159,4 +161,23 @@ a:hover{
 	position:absolute;
 	top:0;
 	width:290px;
+}
+
+/* style overrides
+-------------------------*/
+div#wall h1 {
+	display: none;
+}
+
+
+/* link styles
+--------------------------*/
+.status h2 a:link, .status h2 a:visited, .status h2 a:active {
+	color: #C40000;
+	text-shadow: none;
+}
+
+.status h2 a:hover {
+	color: red;
+	text-shadow: none;
 }
