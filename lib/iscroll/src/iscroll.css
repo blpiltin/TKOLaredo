@@ -1,5 +1,5 @@
 #wrapper {
-	width: 300px;
+	width: 2100px;
 	height: 160px;
 	float: left;
 	position: relative; /* On older OS versions "position" and "z-index" must be defined, */

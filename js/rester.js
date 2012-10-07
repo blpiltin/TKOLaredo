@@ -27,7 +27,7 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': ''
+			'customCSS': 'jquery-mobile/tko-sb.css'
 		},
 		{
 			'name': 'Shiloh',
@@ -45,20 +45,17 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': ''
+			'customCSS': 'jquery-mobile/tko-sh.css'
 		}
 	], 
-	
-	// The current restaurant location
-	currentLoc: 0, 
-	lastLocToken: 'tkoLastLocToken',
-	
+		
 	// The URL for the proxy server to convert html to jsonp
-	proxyURL: "http://differentdezinellc.com/proxy.php?url=",
+	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
+	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
 	
 	// The maximum number of photos on the front page scroll
-	MAX_SCROLL: 7,
+	MAX_SCROLL: 12,
 	// The current number of photos in the front page scroll
 	scrollSize: 0,
 	
@@ -69,53 +66,6 @@ var Rester = {
 	initialize: function() {
 		this.proxyTest();
 		this.bindEvents();
-	},
-	
-	getLocProp: function(prop) {
-		return _.pluck(this.locations, prop)[this.currentLoc];
-	},
-	
-	fixWindow: function() {
-		$(document).width($(window).width() - 5);
-		$('html').css("width", $(window).width() - 5);
-		$('body').css("width", $(window).width() - 5);
-	},
-	
-	/**
-	 * Fix the orientation of any css based widgets after the
-	 * orientation has changed.
-	 */
-	updateOrientation: function() {
-		var winOr = window.orientation;
-		if (winOr == 0 || winOr == 180) { // portrait
-			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
-		} else { // landscape
-			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');								
-		}
-		// $(document).width($(window).width());
-		// Prevent the icons from getting pushed off bottom of window.
-		this.fixWindow();
-		this.fixScroller();
-		this.fixMusicPlayer90;
-		// if ($.mobile.activePage === $("#homePage")) {
-			Rester.loadHomePage();
-			RestUtils.debug("Rester.updateOrientation()", "Reloading home page.");
-		// }
-	},
-
-	proxyTest: function() {
-		$.ajax({
-			url: Rester.albumURL, 
-			dataType: "xml",
-			success: function(data) {
-				Rester.proxyURL = "";
-				Rester.dataType = "xml";
-				RestUtils.debug("Rester.proxyTest()", "Not using proxy server.");
-			},
-			error: function(data) {
-				RestUtils.debug("Rester.proxyTest()", "Using proxy server.");
-			}
-		});
 	},
 	
 	// Bind Event Listeners
@@ -141,9 +91,8 @@ var Rester = {
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
-				if (localStorage.getItem(this.lastLocToken)) {
-					this.currentLoc = localStorage.getItem(this.lastLocToken);
-				}
+				Rester.initializeLocation();
+				Rester.setHeaderImage();
 				Rester.loadHomePage();
 			} catch (x) {
 				alert(x.message);
@@ -237,13 +186,115 @@ var Rester = {
 			}
 		});
 	},
+	
+	fixWindow: function() {
+		$(document).width($(window).width());
+		$('html').css("width", $(window).width());
+		$('body').css("width", $(window).width());
+	},
+	
+	/**
+	 * Fix the orientation of any css based widgets after the
+	 * orientation has changed.
+	 */
+	updateOrientation: function() {
+		var winOr = window.orientation;
+		if (winOr == 0 || winOr == 180) { // portrait
+			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
+		} else { // landscape
+			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');								
+		}
+		// $(document).width($(window).width());
+		// Prevent the icons from getting pushed off bottom of window.
+		this.fixWindow();
+		this.fixScroller();
+		this.fixMusicPlayer90;
+		// if ($.mobile.activePage === $("#homePage")) {
+			Rester.loadHomePage();
+			RestUtils.debug("Rester.updateOrientation()", "Reloading home page.");
+		// }
+	},
 
+	proxyTest: function() {
+		$.ajax({
+			url: Rester.albumURL, 
+			dataType: "xml",
+			success: function(data) {
+				Rester.proxyURL = "";
+				Rester.dataType = "xml";
+				RestUtils.debug("Rester.proxyTest()", "Not using proxy server.");
+			},
+			error: function(data) {
+				RestUtils.debug("Rester.proxyTest()", "Using proxy server.");
+			}
+		});
+	},
+
+	initializeLocation: function() {
+		Rester.createLocationMenu();
+		if (localStorage.getItem('tkoLastLocToken') === 'undefined') {
+			RestUtils.debug("initializeLocation()", "Location undefined.");
+			$("#popupLocation").popup("open");
+		}
+	},
+	
+	getLocation: function() {
+		return (localStorage.getItem('tkoLastLocToken') === 'undefined') ? 0 : localStorage.getItem('tkoLastLocToken');
+	},
+	
+	setLocation: function(toLocation) {
+		localStorage.setItem('tkoLastLocToken', toLocation);
+	},
+	
+	getLocProp: function(prop) {
+		return _.pluck(this.locations, prop)[Rester.getLocation()];
+	},
+	
+	createLocationMenu: function() {
+		// <li><a data-rel="popup" onClick="Rester.switchLocation(event); return false" href="#locationMenuLevel1">San Bernardo</a></li>
+		// <li><a data-rel="popup" href="#locationMenuLevel1">Shiloh</a></li>
+		
+		var text = "";
+		var active = "";
+		
+		for (var i = 0; i < this.locations.length; i++) {
+			if (Rester.getLocation() && i === Rester.getLocation()) active = 'class="ui-list-active"';
+			text += 
+				'<li><a data-rel="popup" href="#locationMenuLevel1" onClick="Rester.switchLocation(event);" ' +
+				active + '>' +
+				this.locations[i].name + 
+				'</a></li>'
+		}
+		
+		$('#locationMenu').html(text);
+		$('#locationMenu').listview('refresh');
+	},
+	
+	switchLocation: function(e) {
+		var location = 0;
+		for (var i = 0; i < this.locations.length; i++) {
+			if (this.locations[i].name === e.currentTarget.innerHTML) {
+				if (!Rester.getLocation() || i != Rester.getLocation()) {
+					Rester.setLocation(i);
+					if (Rester.getLocProp('customCSS') != '') 
+						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
+					document.getElementById('mapPage').contentDocument.location.reload(true);
+					this.loadHomePage();
+				}
+			}
+		}
+	},
+	
 	loadHomePage: function() {
 		
 		var error = "";
 		var galleryURL = "";
 		
 		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		
+		this.setTelephoneLink();
+		this.setEmailLink();
+		this.createLocationMenu();
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
@@ -273,7 +324,6 @@ var Rester = {
 
 						if (text != '') {
 							$('#thelist').html(text);
-							$('#indicator').html(indicator);
 							Rester.fixScroller();
 							window.myScroll = new iScroll('wrapper', {
 								snap: false,
@@ -291,65 +341,21 @@ var Rester = {
 				error = 'An error occured loading the pictures. Please be sure you are connected to the internet.';
 			}
 		});
-		
-		this.setTelephoneLink();
-		this.setEmailLink();
-		this.createLocationMenu();
-		
+				
 		if (error != "") throw error;
 	},
 	
 	fixScroller: function() {
-
-		// $('#wrapper').css('height', $(window).height() / 3 + 'px');
-		// $('#wrapper').css("width", $(window).width() + 'px');
-		// $('#scroller').css("width", $('#scroller li').css("width") * scrollSize + 'px');
-		// $('#scroller').css("width", ($(window).width() * this.scrollSize) + 'px');
+		$('#wrapper').css('height', $(window).height() / 3 + 'px');
+		$('#wrapper').css("width", $(window).width() + 'px');
 		var scrollStr = $('#scroller li').css('width');
 		var scrollWidth = scrollStr.substring(0, scrollStr.length - 2);
-		RestUtils.debug('Rester.fixScroller()', 'Scroller size = ' + scrollWidth);
 		$('#scroller').css("width", scrollWidth * this.scrollSize);
-		// $('#scroller li').css("height", $(window).height() / 3 + 'px');
-		// $('#scroller li').css("width", $(window).width() + 'px');
-		// $('#scroller li img').css("height", $(window).height() / 3 + 'px');
-		//$('#nav').css("width", $(window).width());
 	},
 	
-	createLocationMenu: function() {
-		// <li><a data-rel="popup" onClick="Rester.switchLocation(event); return false" href="#locationMenuLevel1">San Bernardo</a></li>
-		// <li><a data-rel="popup" href="#locationMenuLevel1">Shiloh</a></li>
-		
-		var text = "";
-		var active = "";
-		
-		for (var i = 0; i < this.locations.length; i++) {
-			if (i === this.currentLoc) active = 'class="ui-list-active"';
-			text += 
-				'<li><a data-rel="popup" href="#locationMenuLevel1" onClick="Rester.switchLocation(event);" ' +
-				active + '>' +
-				this.locations[i].name + 
-				'</a></li>'
-		}
-		
-		$('#locationMenu').html(text);
-		$('#locationMenu').listview('refresh');
-	},
-	
-	switchLocation: function(e) {
-		var location = 0;
-		for (var i = 0; i < this.locations.length; i++) {
-			if (this.locations[i].name === e.currentTarget.innerHTML) {
-				if (i != this.currentLoc) {
-					this.currentLoc = i;
-					localStorage.setItem(this.lastLocToken, this.currentLoc);
-					if (Rester.getLocProp('customCSS') != '') 
-						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-					document.getElementById('mapPage').contentDocument.location.reload(true);
-					this.loadHomePage();
-				}
-			}
-		}
-		
+	setHeaderImage: function() {
+		if (Rester.getLocProp('customCSS') != '') 
+			$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
 	},
 	
 	setTelephoneLink: function() {
@@ -377,21 +383,21 @@ var Rester = {
 	
 	loadMenuPage: function() {
 		var error = "";
-		
+
 		RestUtils.debug("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
 			success: function(data) {
-
+		
 				var categories = [];
 				var images = [];
 				var description = "";
 				var category = "";
 				var image = "";
 				var newHTML = "";
-
+		
 				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					description = $(this).find('a').attr('title');
 					image = $(this).find('img').attr('src');
@@ -401,7 +407,7 @@ var Rester = {
 						images.push(image);
 					}
 				});
-
+		
 				$.each(categories, function(i, val) {
 					if (val === ' ') val = 'Uncategorizable';
 					newHTML += '<li class="menuCategory"><a href="menucategory.html?category=' + 
