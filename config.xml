@@ -20,6 +20,9 @@
 
 	<preference name="webviewbounce" value="false" />
 	<preference name="orientation" value="both" />
+	<preference name="useBrowserHistory" value="false" />
+    <preference name="exit-on-suspend" value="false" />
+
 	<!--
 	<preference name="target-device" value="universal" />
 	<preference name="fullscreen" value="false" />

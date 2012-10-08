@@ -62,10 +62,20 @@ var Rester = {
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
 
+	db: new Lawnchair({name:'db'}, function(store) {
+		RestUtils.debug("Rester.db", "Database created succesfully.");
+	}),
+	
 	// Rester Constructor
 	initialize: function() {
 		this.proxyTest();
 		this.bindEvents();
+		this.initializeLocation();
+		
+		// this.db.save({key: 'location', value: '10'});
+		// 		var value = this.db.get('location', function(obj) {
+		// 			RestUtils.debug('Rester.initialize()', 'Testing db... location = ' + obj.value);
+		// 		});
 	},
 	
 	// Bind Event Listeners
@@ -102,12 +112,19 @@ var Rester = {
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
-				Rester.initializeLocation();
+				
+				Rester.createLocationMenu();
 				Rester.setHeaderImage();
-				// Rester.loadHomePage();
+				Rester.setTelephoneLink();
+				Rester.setEmailLink();
+				Rester.createLocationMenu();
+				
+				// Rester.loadSharePage();
 				// Rester.loadMenuPage();
 				// Rester.loadEventsPage();
 				// Rester.loadPicturesGalleryPage();
+				// Rester.loadMusicPage();
+				
 			} catch (x) {
 				alert(x.message);
 			}
@@ -186,11 +203,11 @@ var Rester = {
 		$('#picturesGalleryPage').live('pagehide', function(e) {
 			try {
 				var
-				currentPage = $(x.target),
-					photoSwipeInstance = PhotoSwipe.getInstance(currentPage.attr('id'));
+				currentPage = $(e.target),
+					photoSwipeInstance = window.photoSwipe; // PhotoSwipe.getInstance(currentPage.attr('id'));
 
 				if (typeof photoSwipeInstance != "undefined" && photoSwipeInstance != null) {
-					PhotoSwipe.detatch(photoSwipeInstance);
+					delete photoSwipeInstance;
 				}
 				return true;
 			} catch (x) {
@@ -253,23 +270,38 @@ var Rester = {
 	},
 
 	initializeLocation: function() {
-		Rester.createLocationMenu();
-		if (localStorage.getItem('tkoLastLocToken') === 'undefined') {
+		var loc = Rester.getLocation();
+		if (loc === undefined || loc === "") {
 			RestUtils.debug("initializeLocation()", "Location undefined.");
+			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
 			// $("#popupLocation").popup("open");
 		}
 	},
 	
+	setProp: function(id, value) {
+		this.db.save({key: id, val: value});
+	},
+	
+	getProp: function(id) {
+		var val = "";
+		this.db.get(id, function(obj) {
+			if (obj === undefined) return obj;
+			val = obj.val;
+		});
+		return val;
+	},
+	
 	getLocation: function() {
-		return (localStorage.getItem('tkoLastLocToken') === 'undefined') ? 0 : localStorage.getItem('tkoLastLocToken');
+		return this.getProp('location');
 	},
 	
 	setLocation: function(toLocation) {
-		localStorage.setItem('tkoLastLocToken', toLocation);
+		this.setProp('location', toLocation);
+		// localStorage.setItem('tkoLastLocToken', toLocation);
 	},
 	
 	getLocProp: function(prop) {
-		return _.pluck(this.locations, prop)[Rester.getLocation()];
+		return this.locations[Rester.getLocation()][prop];
 	},
 	
 	createLocationMenu: function() {
@@ -280,7 +312,7 @@ var Rester = {
 		var active = "";
 		
 		for (var i = 0; i < this.locations.length; i++) {
-			if (Rester.getLocation() && i === Rester.getLocation()) active = 'class="ui-list-active"';
+			if (i === Rester.getLocation()) active = 'class="ui-list-active"';
 			text += 
 				'<li><a data-rel="popup" href="#locationMenuLevel1" onClick="Rester.switchLocation(event);" ' +
 				active + '>' +
@@ -296,7 +328,7 @@ var Rester = {
 		var location = 0;
 		for (var i = 0; i < this.locations.length; i++) {
 			if (this.locations[i].name === e.currentTarget.innerHTML) {
-				if (!Rester.getLocation() || i != Rester.getLocation()) {
+				if (i != Rester.getLocation()) {
 					Rester.setLocation(i);
 					if (Rester.getLocProp('customCSS') != '') 
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
@@ -312,11 +344,7 @@ var Rester = {
 		var galleryURL = "";
 		
 		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
-		
-		this.setTelephoneLink();
-		this.setEmailLink();
-		this.createLocationMenu();
-		
+				
 		$.ajax({
 			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
@@ -354,7 +382,7 @@ var Rester = {
 							window.myScroll = new iScroll('wrapper', {
 								snap: false,
 								momentum: true,
-								hScrollbar: false,
+								hScrollbar: false
 							});
 						}
 					},
@@ -567,7 +595,8 @@ var Rester = {
 	loadPicturesPage: function() {
 		var error = "";
 		
-		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
+			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
@@ -575,10 +604,10 @@ var Rester = {
 			success: function(data) {
 				$($(RestUtils.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
-						'<a href="picturesgallery.html?galleryURL=' + encodeURIComponent($(this).find('a').attr('href')) + '">' + 
-						'<img src="' + $(this).find('img').attr('src') + '"/>' + RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
-					//$('#galleryList').append('<li>' + $(this).find('div.ngg-albumtitle').text() + '</li>');
-					//$('#picturesDivTest').append($('div.ngg-albumtitle', $(this)).text());
+						'<a href="picturesgallery.html?galleryURL=' + 
+						encodeURIComponent($(this).find('a').attr('href')) + '">' + 
+						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
+						RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
 				});
 				$('#galleryList').listview('refresh');
 			},

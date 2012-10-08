@@ -163,3 +163,11 @@ var site = 'http://query.yahooapis.com/v1/public/yql?q=' + select + '&format=jso
 			else throw new Error('Nothing returned from getJSON.');
 		});
 	},
+	
+	
+	<script>
+	if (typeof jQuery == 'undefined')
+	{
+	    document.write(unescape("%3Cscript src='/Scripts/jquery-1.3.2.min.js' type='text/javascript'%3E%3C/script%3E"));
+	}
+	</script>

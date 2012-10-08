@@ -75,6 +75,11 @@
 				fb.posts.push(this);
 			});
 
+			if (fb.posts.length == 0) {
+				$('#wall').html('<h3>There are no events to display.</h3>');
+				return this;
+			}
+			
 			// Rendering the templates:
 			$('#headingTpl').tmpl(fb.user).appendTo(wall);
 			
