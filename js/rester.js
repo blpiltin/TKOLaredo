@@ -81,18 +81,40 @@ var Rester = {
 		});
 		
 		$(document).bind("mobileinit", function() {
-			// Make your jQuery Mobile framework configuration changes here!
+			
 			$.mobile.allowCrossDomainPages = true;
-			$.mobile.defaultPageTransition = 'slide';
+			// $.mobile.defaultPageTransition = 'slide';
 			// $.mobile.touchOverflowEnabled = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
+			// $.mobile.page.prototype.options.domCache = true;
+			
+			// // This allows jQuery to access the cached data for ajax failures.
+			// $.ajaxPrefilter( function(options, originalOptions, jqXHR) {
+			// 		if ( applicationCache &&
+			// 			 applicationCache.status != applicationCache.UNCACHED &&
+			// 			 applicationCache.status != applicationCache.OBSOLETE ) {
+			// 			 // the important bit
+			// 			 options.isLocal = true;
+			// 		}
+			// 	});
 		});
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
 				Rester.initializeLocation();
 				Rester.setHeaderImage();
+				// Rester.loadHomePage();
+				// Rester.loadMenuPage();
+				// Rester.loadEventsPage();
+				// Rester.loadPicturesGalleryPage();
+			} catch (x) {
+				alert(x.message);
+			}
+		});
+		
+		$('#homePage').live('pageshow', function(e) {
+			try {
 				Rester.loadHomePage();
 			} catch (x) {
 				alert(x.message);
@@ -208,7 +230,7 @@ var Rester = {
 		// Prevent the icons from getting pushed off bottom of window.
 		this.fixWindow();
 		this.fixScroller();
-		this.fixMusicPlayer90;
+		this.fixMusicPlayer();
 		// if ($.mobile.activePage === $("#homePage")) {
 			Rester.loadHomePage();
 			RestUtils.debug("Rester.updateOrientation()", "Reloading home page.");
@@ -234,7 +256,7 @@ var Rester = {
 		Rester.createLocationMenu();
 		if (localStorage.getItem('tkoLastLocToken') === 'undefined') {
 			RestUtils.debug("initializeLocation()", "Location undefined.");
-			$("#popupLocation").popup("open");
+			// $("#popupLocation").popup("open");
 		}
 	},
 	
@@ -287,7 +309,6 @@ var Rester = {
 	
 	loadHomePage: function() {
 		
-		var error = "";
 		var galleryURL = "";
 		
 		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
@@ -297,9 +318,14 @@ var Rester = {
 		this.createLocationMenu();
 		
 		$.ajax({
+			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
+			// timeout: '2000',
+			// ifModified: 'true',
+			
 			success: function(data) {
+				
 				temp = $(RestUtils.getDataContents(data)).find('div.ngg-album').get();
 				galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
 				galleryURL = encodeURIComponent(galleryURL);
@@ -308,20 +334,20 @@ var Rester = {
 					url: Rester.proxyURL + galleryURL,
 					dataType: Rester.dataType,
 					success: function(data) {
-
+		
 						var style = "";
 						var text = "";
 						var indicator = '<li class="active">1</li>';
 						var images = $(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
 						Rester.scrollSize = 0;
-
+		
 						for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
 							Rester.scrollSize++;
 							text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
 								'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
 							indicator += (i == 0) ? '' : '<li>' + (i + 1) + '</li>';
 						};
-
+		
 						if (text != '') {
 							$('#thelist').html(text);
 							Rester.fixScroller();
@@ -333,16 +359,16 @@ var Rester = {
 						}
 					},
 					error: function() {
-						error = "An error occured loading the pictures. Please be sure you are connected to the internet.";
+						RestUtils.debug("loadHomePage()", 
+							"An error occured loading the pictures. Please be sure you are connected to the internet.");
 					}
 				});
 			},
 			error: function() {
-				error = 'An error occured loading the pictures. Please be sure you are connected to the internet.';
+				RestUtils.debug("loadHomePage()", 
+					"An error occured loading the pictures. Please be sure you are connected to the internet.");
 			}
 		});
-				
-		if (error != "") throw error;
 	},
 	
 	fixScroller: function() {
@@ -389,6 +415,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 		
 				var categories = [];
@@ -438,6 +465,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 
 				var description = "";
@@ -481,6 +509,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 
 				var title = "";

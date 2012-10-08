@@ -32,6 +32,8 @@
 	
 	<script src="childbrowser.js"></script>
 	
+	<!-- // <script src="js/lawnchair.js"></script> -->
+	
 	<script src="js/share.js" type="text/javascript"></script>
 	<script src="js/events.js"></script>
 	
@@ -94,7 +96,7 @@
 			</div>
 			<div data-role="popup" id="popupMap" data-overlay-theme="a" data-theme="a" data-corners="false" data-tolerance="15,15">
 			    <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
-			    <iframe id="mapPage" src="map.html" rel="external" width="280" height="280" seamless></iframe>
+			    <iframe id="mapPage" src="map.html" data-prefetch rel="external" width="280" height="280" seamless></iframe>
 			</div>
 			
 		</div><!-- /content -->
@@ -107,19 +109,19 @@
 						HOME</a>
 					</li>
 					<li>
-						<a href="menu.html" data-theme="a"><img src="jquery-mobile/images/menu.png" width="25" height="25"><br>
+						<a href="menu.html" data-prefetch data-theme="a"><img src="jquery-mobile/images/menu.png" width="25" height="25"><br>
 						MENU</a>
 					</li>
 					<li>
-						<a href="events.html" data-theme="a"><img src="jquery-mobile/images/events.png" width="25" height="25"><br>
+						<a href="events.html" data-prefetch data-theme="a"><img src="jquery-mobile/images/events.png" width="25" height="25"><br>
 						EVENTS</a>
 					</li>
 					<li>
-						<a href="pictures.html" data-theme="a"><img src="jquery-mobile/images/pictures.png" width="25" height="25"><br>
+						<a href="pictures.html" data-prefetch data-theme="a"><img src="jquery-mobile/images/pictures.png" width="25" height="25"><br>
 						PICS</a>
 					</li>
 					<li>
-						<a href="music.html" data-theme="a"><img src="jquery-mobile/images/music.png" width="25" height="25"><br>
+						<a href="music.html" data-prefetch data-theme="a"><img src="jquery-mobile/images/music.png" width="25" height="25"><br>
 						MUSIC</a>
 					</li>
 				</ul>
