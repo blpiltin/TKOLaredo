@@ -53,7 +53,16 @@ var Facebook = {
 
 		// When the childBrowser window changes locations we check to see if that page is our success page.
 		if (loc.indexOf("https://www.facebook.com/connect/login_success.html") >= 0) {
+			
 			var fbCode = loc.match(/code=(.*)$/)[1]
+			
+			var tempUrl = 'https://graph.facebook.com/oauth/access_token?client_id=' + 
+				fb_client_id + '&client_secret=' + fb_secret + '&code=' + 
+				fbCode + '&redirect_uri=https://www.facebook.com/connect/login_success.html';
+				
+			RestUtils.debug("Facebook.facebookLocChanged()", 
+				"Attempting to longing using " + tempUrl);
+			
 			$.ajax({
 				url: 'https://graph.facebook.com/oauth/access_token?client_id=' + 
 					fb_client_id + '&client_secret=' + fb_secret + '&code=' + 
@@ -66,7 +75,7 @@ var Facebook = {
 					RestUtils.debug("Facebook.facebookLocChanged()", "Login success.");
 					
 					// We store our token in a localStorage Item called facebook_token
-					localStorage.setItem(facebook_token, data.split("=")[1]);
+					Rester.setFacebookToken(data.split("=")[1]);
 
 					window.plugins.childBrowser.close();
 
@@ -96,7 +105,7 @@ var Facebook = {
 	post: function(_fbType, params) {
 
 		// Our Base URL which is composed of our request type and our localStorage facebook_token
-		var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + localStorage.getItem(facebook_token);
+		var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + Rester.getFacebookToken();
 
 		// Build our URL
 		for (var key in params) {
@@ -135,7 +144,7 @@ var Facebook = {
 	bodyLoad: function() {
 		
 		// First lets check to see if we have a user or not
-		if (!localStorage.getItem(facebook_token)) {
+		if (Rester.getFacebookToken() === 'undefined' || Rester.getFacebookToken() === "") {
 			
 			RestUtils.debug("Facebook.bodyLoad()", "Don't have local token yet.");
 

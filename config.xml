@@ -3,7 +3,7 @@
         xmlns:gap = "http://phonegap.com/ns/1.0"
         id        = "com.brianpiltin.TKOLaredo"
         versionCode="8" 
-        version   = "0.9.3">
+        version   = "0.9.5">
 
     <!-- versionCode is optional and Android only -->
 
@@ -20,6 +20,9 @@
 
 	<preference name="webviewbounce" value="false" />
 	<preference name="orientation" value="both" />
+	<preference name="useBrowserHistory" value="false" />
+    <preference name="exit-on-suspend" value="false" />
+
 	<!--
 	<preference name="target-device" value="universal" />
 	<preference name="fullscreen" value="false" />

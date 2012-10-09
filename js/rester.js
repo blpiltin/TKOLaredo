@@ -20,7 +20,7 @@ var Rester = {
 			'longitude': '-99.504507',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
-			'musicURL': 'http://soundcloud.com/hayashi-1',
+			'musicURL': 'http://soundcloud.com/vjdrock',
 			'fbID': '184375751588144',
 			'fbName': 'The TKO Laredo app for iPhone.',
 			'fbDescription': "Visit the Laredo Heat website and get the TKO app for iPhone.",
@@ -37,7 +37,7 @@ var Rester = {
 			'latitude': '27.590219',
 			'longitude': '-99.482717',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
-			'picturesURL': 'http://v2.laredoheat.com/?page_id=2215',
+			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
 			'musicURL': 'http://soundcloud.com/vjdrock',
 			'fbID': '100004085199809',
 			'fbName': 'The TKO Laredo app for iPhone.',
@@ -62,10 +62,33 @@ var Rester = {
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
 
+	db: new Lawnchair({name:'db'}, function(store) {
+		RestUtils.debug("Rester.db", "Database created succesfully.");
+	}),
+	
+	setProp: function(id, value) {
+		this.db.save({key: id, val: value});
+	},
+	
+	getProp: function(id) {
+		var val = "";
+		this.db.get(id, function(obj) {
+			if (obj === undefined) return obj;
+			val = obj.val;
+		});
+		return val;
+	},
+	
 	// Rester Constructor
 	initialize: function() {
 		this.proxyTest();
 		this.bindEvents();
+		this.initializeLocation();
+		
+		// this.db.save({key: 'location', value: '10'});
+		// 		var value = this.db.get('location', function(obj) {
+		// 			RestUtils.debug('Rester.initialize()', 'Testing db... location = ' + obj.value);
+		// 		});
 	},
 	
 	// Bind Event Listeners
@@ -81,19 +104,51 @@ var Rester = {
 		});
 		
 		$(document).bind("mobileinit", function() {
-			// Make your jQuery Mobile framework configuration changes here!
+			
 			$.mobile.allowCrossDomainPages = true;
-			$.mobile.defaultPageTransition = 'slide';
-			// $.mobile.touchOverflowEnabled = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
 			$.mobile.phonegapNavigationEnabled = true;
+			
+			// $.mobile.page.prototype.options.domCache = true;
+			
+			// // This allows jQuery to access the cached data for ajax failures.
+			// $.ajaxPrefilter( function(options, originalOptions, jqXHR) {
+			// 		if ( applicationCache &&
+			// 			 applicationCache.status != applicationCache.UNCACHED &&
+			// 			 applicationCache.status != applicationCache.OBSOLETE ) {
+			// 			 // the important bit
+			// 			 options.isLocal = true;
+			// 		}
+			// 	});
 		});
+		
+		// $(document).bind("pagebeforechange", function( event, data ) {
+		//            $.mobile.pageData = (data && data.options && data.options.pageData)
+		//                                   ? data.options.pageData
+		//                                   : null;
+		//         });
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
-				Rester.initializeLocation();
+				
+				RestUtils.debug("homPage:pageinit", "Basepath: " + Rester.getBasePath());
+				
+				Rester.createLocationMenu();
 				Rester.setHeaderImage();
+				Rester.setTelephoneLink();
+				Rester.setEmailLink();
+				Rester.createLocationMenu();
+				Rester.createMap();
+				
+			} catch (x) {
+				alert(x.message);
+			}
+		});
+		
+		$('#homePage').live('pageshow', function(e) {
+			try {
+				$('#map_canvas').gmap('refresh');
 				Rester.loadHomePage();
 			} catch (x) {
 				alert(x.message);
@@ -165,11 +220,11 @@ var Rester = {
 		$('#picturesGalleryPage').live('pagehide', function(e) {
 			try {
 				var
-				currentPage = $(x.target),
-					photoSwipeInstance = PhotoSwipe.getInstance(currentPage.attr('id'));
+				currentPage = $(e.target),
+					photoSwipeInstance = window.photoSwipe; // PhotoSwipe.getInstance(currentPage.attr('id'));
 
 				if (typeof photoSwipeInstance != "undefined" && photoSwipeInstance != null) {
-					PhotoSwipe.detatch(photoSwipeInstance);
+					delete photoSwipeInstance;
 				}
 				return true;
 			} catch (x) {
@@ -209,7 +264,7 @@ var Rester = {
 		// Prevent the icons from getting pushed off bottom of window.
 		this.fixWindow();
 		this.fixScroller();
-		this.fixMusicPlayer90;
+		this.fixMusicPlayer();
 		// if ($.mobile.activePage === $("#homePage")) {
 			Rester.loadHomePage();
 			RestUtils.debug("Rester.updateOrientation()", "Reloading home page.");
@@ -230,25 +285,42 @@ var Rester = {
 			}
 		});
 	},
-
+	
+	getBasePath: function() {
+		if (this.getProp('basePath') === undefined || this.getProp('basePath') === "") {
+			this.setProp('basePath', $.mobile.path.get(window.location.href));
+		}
+		return this.getProp('basePath');
+	},
+	
+	getFacebookToken: function() {
+		return this.getProp('fbToken');
+	},
+	
+	setFacebookToken: function(token) {
+		this.setProp('fbToken', token);
+	},
+	
 	initializeLocation: function() {
-		Rester.createLocationMenu();
-		if (localStorage.getItem('tkoLastLocToken') === 'undefined') {
+		var loc = Rester.getLocation();
+		if (loc === undefined || loc === "") {
 			RestUtils.debug("initializeLocation()", "Location undefined.");
-			$("#popupLocation").popup("open");
+			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
+			// $("#popupLocation").popup("open");
 		}
 	},
 	
 	getLocation: function() {
-		return (localStorage.getItem('tkoLastLocToken') === 'undefined') ? 0 : localStorage.getItem('tkoLastLocToken');
+		return this.getProp('location');
 	},
 	
 	setLocation: function(toLocation) {
-		localStorage.setItem('tkoLastLocToken', toLocation);
+		this.setProp('location', toLocation);
+		// localStorage.setItem('tkoLastLocToken', toLocation);
 	},
 	
 	getLocProp: function(prop) {
-		return _.pluck(this.locations, prop)[Rester.getLocation()];
+		return this.locations[Rester.getLocation()][prop];
 	},
 	
 	createLocationMenu: function() {
@@ -259,7 +331,7 @@ var Rester = {
 		var active = "";
 		
 		for (var i = 0; i < this.locations.length; i++) {
-			if (Rester.getLocation() && i === Rester.getLocation()) active = 'class="ui-list-active"';
+			if (i === Rester.getLocation()) active = 'class="ui-list-active"';
 			text += 
 				'<li><a data-rel="popup" href="#locationMenuLevel1" onClick="Rester.switchLocation(event);" ' +
 				active + '>' +
@@ -275,11 +347,11 @@ var Rester = {
 		var location = 0;
 		for (var i = 0; i < this.locations.length; i++) {
 			if (this.locations[i].name === e.currentTarget.innerHTML) {
-				if (!Rester.getLocation() || i != Rester.getLocation()) {
+				if (i != Rester.getLocation()) {
 					Rester.setLocation(i);
 					if (Rester.getLocProp('customCSS') != '') 
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-					document.getElementById('mapPage').contentDocument.location.reload(true);
+					this.createMap();
 					this.loadHomePage();
 				}
 			}
@@ -288,19 +360,19 @@ var Rester = {
 	
 	loadHomePage: function() {
 		
-		var error = "";
 		var galleryURL = "";
 		
 		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
-		
-		this.setTelephoneLink();
-		this.setEmailLink();
-		this.createLocationMenu();
-		
+							
 		$.ajax({
+			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
+			// timeout: '2000',
+			// ifModified: 'true',
+			
 			success: function(data) {
+				
 				temp = $(RestUtils.getDataContents(data)).find('div.ngg-album').get();
 				galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
 				galleryURL = encodeURIComponent(galleryURL);
@@ -309,41 +381,41 @@ var Rester = {
 					url: Rester.proxyURL + galleryURL,
 					dataType: Rester.dataType,
 					success: function(data) {
-
+		
 						var style = "";
 						var text = "";
 						var indicator = '<li class="active">1</li>';
 						var images = $(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
 						Rester.scrollSize = 0;
-
+		
 						for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
 							Rester.scrollSize++;
 							text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
 								'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
 							indicator += (i == 0) ? '' : '<li>' + (i + 1) + '</li>';
 						};
-
+		
 						if (text != '') {
 							$('#thelist').html(text);
 							Rester.fixScroller();
 							window.myScroll = new iScroll('wrapper', {
 								snap: false,
 								momentum: true,
-								hScrollbar: false,
+								hScrollbar: false
 							});
 						}
 					},
 					error: function() {
-						error = "An error occured loading the pictures. Please be sure you are connected to the internet.";
+						RestUtils.debug("loadHomePage()", 
+							"An error occured loading the pictures. Please be sure you are connected to the internet.");
 					}
 				});
 			},
 			error: function() {
-				error = 'An error occured loading the pictures. Please be sure you are connected to the internet.';
+				RestUtils.debug("loadHomePage()", 
+					"An error occured loading the pictures. Please be sure you are connected to the internet.");
 			}
 		});
-				
-		if (error != "") throw error;
 	},
 	
 	fixScroller: function() {
@@ -367,15 +439,11 @@ var Rester = {
 		$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
 	},
 	
-	loadMapPage: function(mapDoc) {
-        var myLatlng = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
-        var myOptions = {
-            zoom: 15,
-            center: myLatlng,
-            mapTypeId: google.maps.MapTypeId.ROADMAP
-        }
-        var map = new google.maps.Map( mapDoc.getElementById( "map_canvas" ), myOptions );
-		var marker = new google.maps.Marker({"map": map, "position": myLatlng });
+	createMap: function() {
+		$('#map_canvas').gmap('destroy');
+		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
+		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
+		$('#map_canvas').gmap('addMarker', {'position': loc });
     },
 	
 	loadSharePage: function() {
@@ -390,6 +458,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 		
 				var categories = [];
@@ -411,8 +480,9 @@ var Rester = {
 		
 				$.each(categories, function(i, val) {
 					if (val === ' ') val = 'Uncategorizable';
-					newHTML += '<li class="menuCategory"><a href="menucategory.html?category=' + 
-						encodeURIComponent(val) + '">' + 
+						newHTML += '<li class="menuCategory">' + 
+						'<a href="menucategory.html" ' + 
+						'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
 						'<img src="' + images[i] + '"/>' + RestUtils.toTitleCase(val) + '</a></li>';
 				});
 				$('#menuCategories').html(newHTML);
@@ -428,9 +498,11 @@ var Rester = {
 
 	loadMenuCategoryPage: function() {
 
-		var error = "";
-		var menuCategory = decodeURIComponent(RestUtils.getURLParameter("category"));
+		RestUtils.debug("1", "Got here");
+		// var menuCategory = decodeURIComponent(RestUtils.getURLParameter("category"));
+		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 		
+		RestUtils.debug("2", "Got here");		
 		RestUtils.debug(
 			"Rester.loadMenuCategoryPage()", 
 			"Loading menu category " + menuCategory + " from " + 
@@ -439,6 +511,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			// ifModified: 'true',
 			success: function(data) {
 
 				var description = "";
@@ -447,7 +520,7 @@ var Rester = {
 				var image = "";
 				var price = "";
 				var newHTML = "";
-				
+									
 				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					description = $(this).find('a').attr('title');
 					category = description.split(';')[0];
@@ -455,25 +528,22 @@ var Rester = {
 					if (category === menuCategory) {
 						item = $(this).find('img').attr('title');
 						image = $(this).find('img').attr('src');
-						newHTML += '<li class="menuItem"><a href="menuitem.html?item=' + 
-							encodeURIComponent(item) + '">' + 
+						newHTML += '<li class="menuItem">' +
+							'<a href="menuitem.html" ' + 
+							'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
 							'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + RestUtils.toTitleCase(item) + '</div>' + 
 							'<div class="menuItemPrice">$' + price + '</div></a></li>';
 					}
 				});
 				$('#menuItems').html(newHTML);
 				$('#menuItems').listview('refresh');
-			},
-			error: function() {
-				error = 'An error occured loading the menu. Please be sure you are connected to the internet.';
 			}
 		});
-		if (error != "") throw error;
 	},
 
 	loadMenuItemPage: function() {
 		var error = "";
-		var menuItem = decodeURIComponent(RestUtils.getURLParameter("item"));
+		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
 
 		RestUtils.debug(
 			"Rester.loadMenuItemPage()", 
@@ -482,6 +552,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 
 				var title = "";
@@ -539,18 +610,20 @@ var Rester = {
 	loadPicturesPage: function() {
 		var error = "";
 		
-		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
+			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 				$($(RestUtils.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
-						'<a href="picturesgallery.html?galleryURL=' + encodeURIComponent($(this).find('a').attr('href')) + '">' + 
-						'<img src="' + $(this).find('img').attr('src') + '"/>' + RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
-					//$('#galleryList').append('<li>' + $(this).find('div.ngg-albumtitle').text() + '</li>');
-					//$('#picturesDivTest').append($('div.ngg-albumtitle', $(this)).text());
+						'<a href="picturesgallery.html" ' + 
+						'onclick=\'Rester.setProp("galleryURL", "' + encodeURIComponent($(this).find('a').attr('href')) + '");\'>' +
+						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
+						RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
 				});
 				$('#galleryList').listview('refresh');
 			},
@@ -562,15 +635,15 @@ var Rester = {
 	},
 
 	loadPicturesGalleryPage: function(e) {
-		var error = "";
-		// var galleryURL = decodeURIComponent(getURLParameter("galleryURL"));
-		var galleryURL = RestUtils.getURLParameter("galleryURL");
+
+		var galleryURL = Rester.getProp("galleryURL");
 
 		RestUtils.debug("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
 				
 		$.ajax({
 			url: Rester.proxyURL + galleryURL,
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 
 				var text = "";
@@ -588,16 +661,11 @@ var Rester = {
 						'jQueryMobile': true,
 						'backButtonHideEnabled': false,
 						'enableMouseWheel': false,
-						'enableKeyboard': false,
-						'allowUserZoom': true
+						'enableKeyboard': false
 					});
 				}
-			},
-			error: function() {
-				error = "An error occured loading the pictures. Please be sure you are connected to the internet.";
 			}
 		});
-		if (error != "") throw error;
 	}, 
 	
 	fixMusicPlayer: function() {
