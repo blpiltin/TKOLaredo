@@ -20,7 +20,7 @@ var Rester = {
 			'longitude': '-99.504507',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
-			'musicURL': 'http://soundcloud.com/hayashi-1',
+			'musicURL': 'http://soundcloud.com/vjdrock',
 			'fbID': '184375751588144',
 			'fbName': 'The TKO Laredo app for iPhone.',
 			'fbDescription': "Visit the Laredo Heat website and get the TKO app for iPhone.",
@@ -37,7 +37,7 @@ var Rester = {
 			'latitude': '27.590219',
 			'longitude': '-99.482717',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
-			'picturesURL': 'http://v2.laredoheat.com/?page_id=2215',
+			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
 			'musicURL': 'http://soundcloud.com/vjdrock',
 			'fbID': '100004085199809',
 			'fbName': 'The TKO Laredo app for iPhone.',
@@ -154,6 +154,7 @@ var Rester = {
 		
 		$('#homePage').live('pageshow', function(e) {
 			try {
+				$('#map_canvas').gmap('refresh');
 				Rester.loadHomePage();
 			} catch (x) {
 				alert(x.message);
@@ -449,7 +450,6 @@ var Rester = {
 		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
 		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
 		$('#map_canvas').gmap('addMarker', {'position': loc });
-		$('#map_canvas').gmap('refresh');
     },
 	
 	loadSharePage: function() {
