@@ -66,6 +66,19 @@ var Rester = {
 		RestUtils.debug("Rester.db", "Database created succesfully.");
 	}),
 	
+	setProp: function(id, value) {
+		this.db.save({key: id, val: value});
+	},
+	
+	getProp: function(id) {
+		var val = "";
+		this.db.get(id, function(obj) {
+			if (obj === undefined) return obj;
+			val = obj.val;
+		});
+		return val;
+	},
+	
 	// Rester Constructor
 	initialize: function() {
 		this.proxyTest();
@@ -109,15 +122,24 @@ var Rester = {
 			// 		}
 			// 	});
 		});
+		
+		// $(document).bind("pagebeforechange", function( event, data ) {
+		//            $.mobile.pageData = (data && data.options && data.options.pageData)
+		//                                   ? data.options.pageData
+		//                                   : null;
+		//         });
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
+				
+				RestUtils.debug("homPage:pageinit", "Basepath: " + Rester.getBasePath());
 				
 				Rester.createLocationMenu();
 				Rester.setHeaderImage();
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
+				Rester.createMap();
 				
 				// Rester.loadSharePage();
 				// Rester.loadMenuPage();
@@ -268,7 +290,22 @@ var Rester = {
 			}
 		});
 	},
-
+	
+	getBasePath: function() {
+		if (this.getProp('basePath') === undefined || this.getProp('basePath') === "") {
+			this.setProp('basePath', $.mobile.path.get(window.location.href));
+		}
+		return this.getProp('basePath');
+	},
+	
+	getFacebookToken: function() {
+		return this.getProp('fbToken');
+	},
+	
+	setFacebookToken: function(token) {
+		this.setProp('fbToken', token);
+	},
+	
 	initializeLocation: function() {
 		var loc = Rester.getLocation();
 		if (loc === undefined || loc === "") {
@@ -276,19 +313,6 @@ var Rester = {
 			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
 			// $("#popupLocation").popup("open");
 		}
-	},
-	
-	setProp: function(id, value) {
-		this.db.save({key: id, val: value});
-	},
-	
-	getProp: function(id) {
-		var val = "";
-		this.db.get(id, function(obj) {
-			if (obj === undefined) return obj;
-			val = obj.val;
-		});
-		return val;
 	},
 	
 	getLocation: function() {
@@ -332,7 +356,7 @@ var Rester = {
 					Rester.setLocation(i);
 					if (Rester.getLocProp('customCSS') != '') 
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-					document.getElementById('mapPage').contentDocument.location.reload(true);
+					this.createMap();
 					this.loadHomePage();
 				}
 			}
@@ -344,7 +368,7 @@ var Rester = {
 		var galleryURL = "";
 		
 		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
-				
+							
 		$.ajax({
 			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
@@ -420,15 +444,12 @@ var Rester = {
 		$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
 	},
 	
-	loadMapPage: function(mapDoc) {
-        var myLatlng = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
-        var myOptions = {
-            zoom: 15,
-            center: myLatlng,
-            mapTypeId: google.maps.MapTypeId.ROADMAP
-        }
-        var map = new google.maps.Map( mapDoc.getElementById( "map_canvas" ), myOptions );
-		var marker = new google.maps.Marker({"map": map, "position": myLatlng });
+	createMap: function() {
+		$('#map_canvas').gmap('destroy');
+		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
+		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
+		$('#map_canvas').gmap('addMarker', {'position': loc });
+		$('#map_canvas').gmap('refresh');
     },
 	
 	loadSharePage: function() {
@@ -465,8 +486,9 @@ var Rester = {
 		
 				$.each(categories, function(i, val) {
 					if (val === ' ') val = 'Uncategorizable';
-					newHTML += '<li class="menuCategory"><a href="menucategory.html?category=' + 
-						encodeURIComponent(val) + '">' + 
+						newHTML += '<li class="menuCategory">' + 
+						'<a href="menucategory.html" ' + 
+						'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
 						'<img src="' + images[i] + '"/>' + RestUtils.toTitleCase(val) + '</a></li>';
 				});
 				$('#menuCategories').html(newHTML);
@@ -482,9 +504,11 @@ var Rester = {
 
 	loadMenuCategoryPage: function() {
 
-		var error = "";
-		var menuCategory = decodeURIComponent(RestUtils.getURLParameter("category"));
+		RestUtils.debug("1", "Got here");
+		// var menuCategory = decodeURIComponent(RestUtils.getURLParameter("category"));
+		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 		
+		RestUtils.debug("2", "Got here");		
 		RestUtils.debug(
 			"Rester.loadMenuCategoryPage()", 
 			"Loading menu category " + menuCategory + " from " + 
@@ -493,7 +517,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
-			ifModified: 'true',
+			// ifModified: 'true',
 			success: function(data) {
 
 				var description = "";
@@ -502,7 +526,7 @@ var Rester = {
 				var image = "";
 				var price = "";
 				var newHTML = "";
-				
+									
 				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					description = $(this).find('a').attr('title');
 					category = description.split(';')[0];
@@ -510,25 +534,22 @@ var Rester = {
 					if (category === menuCategory) {
 						item = $(this).find('img').attr('title');
 						image = $(this).find('img').attr('src');
-						newHTML += '<li class="menuItem"><a href="menuitem.html?item=' + 
-							encodeURIComponent(item) + '">' + 
+						newHTML += '<li class="menuItem">' +
+							'<a href="menuitem.html" ' + 
+							'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
 							'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + RestUtils.toTitleCase(item) + '</div>' + 
 							'<div class="menuItemPrice">$' + price + '</div></a></li>';
 					}
 				});
 				$('#menuItems').html(newHTML);
 				$('#menuItems').listview('refresh');
-			},
-			error: function() {
-				error = 'An error occured loading the menu. Please be sure you are connected to the internet.';
 			}
 		});
-		if (error != "") throw error;
 	},
 
 	loadMenuItemPage: function() {
 		var error = "";
-		var menuItem = decodeURIComponent(RestUtils.getURLParameter("item"));
+		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
 
 		RestUtils.debug(
 			"Rester.loadMenuItemPage()", 
@@ -601,11 +622,12 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 				$($(RestUtils.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
-						'<a href="picturesgallery.html?galleryURL=' + 
-						encodeURIComponent($(this).find('a').attr('href')) + '">' + 
+						'<a href="picturesgallery.html" ' + 
+						'onclick=\'Rester.setProp("galleryURL", "' + encodeURIComponent($(this).find('a').attr('href')) + '");\'>' +
 						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
 						RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
 				});
@@ -619,15 +641,15 @@ var Rester = {
 	},
 
 	loadPicturesGalleryPage: function(e) {
-		var error = "";
-		// var galleryURL = decodeURIComponent(getURLParameter("galleryURL"));
-		var galleryURL = RestUtils.getURLParameter("galleryURL");
+
+		var galleryURL = Rester.getProp("galleryURL");
 
 		RestUtils.debug("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
 				
 		$.ajax({
 			url: Rester.proxyURL + galleryURL,
 			dataType: Rester.dataType,
+			ifModified: 'true',
 			success: function(data) {
 
 				var text = "";
@@ -645,16 +667,11 @@ var Rester = {
 						'jQueryMobile': true,
 						'backButtonHideEnabled': false,
 						'enableMouseWheel': false,
-						'enableKeyboard': false,
-						'allowUserZoom': true
+						'enableKeyboard': false
 					});
 				}
-			},
-			error: function() {
-				error = "An error occured loading the pictures. Please be sure you are connected to the internet.";
 			}
 		});
-		if (error != "") throw error;
 	}, 
 	
 	fixMusicPlayer: function() {

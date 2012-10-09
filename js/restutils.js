@@ -37,15 +37,28 @@ var RestUtils = {
 	 * Get a parameter from a URL.
 	 */
 	getURLParameter: function(name) {
-	  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-	  var regexS = "[\\?&]"+name+"=([^&#]*)";
-	  var regex = new RegExp( regexS );
-	  var results = regex.exec( window.location.href );
-	  if( results == null )
-	    return "";
-	  else
-	    return results[1];
+		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+		if (results == null) {
+			return null;
+		} else {
+			return results[1] || 0;
+		}
 	},
+
+	
+	// /**
+	//  * Get a parameter from a URL.
+	//  */
+	// getURLParameter: function(name) {
+	// 	name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+	// 	var regexS = "[\\?&]"+name+"=([^&#]*)";
+	// 	var regex = new RegExp( regexS );
+	// 	var results = regex.exec( window.location.href );
+	// 	if( results == null )
+	// 	 	return "";
+	// 	else
+	// 	 	return results[1];
+	// },
 	
 	/**********************
 	 FaceBook Share
