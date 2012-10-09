@@ -60,7 +60,9 @@
 	<gap:splash src="splash/android/xhdpi.png" gap:platform="android" gap:density="xhdpi" />
 	<gap:splash src="splash/bb/splash.png" gap:platform="blackberry" />
 	<gap:splash src="splash/winphone/splash.jpg" gap:platform="winphone" />
+	
 	<gap:plugin name="ChildBrowser" /> <!-- latest release -->
+	
 	<!-- <gap:plugin name="FacebookAPI">
 		    <param name="APIKey" value="512052125490353" />
 		    <param name="APISecret" value="5c4c96b4ac4be884c4a62b946d81971e" />
