@@ -7,10 +7,8 @@
   	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="format-detection" content="telephone=no" />
-    
 	<!-- <link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" /> -->
 	<link rel="stylesheet" href="lib/css/jquery.mobile-1.2.0.min.css" />
-	
 	<link href="lib/photoswipe/photoswipe.css" type="text/css" rel="stylesheet" />
 	<link href="css/sharestyle.css" rel="stylesheet" type="text/css"/>
 	<link href="css/wallstyle.css" rel="stylesheet" type="text/css" />
@@ -105,7 +103,7 @@
 	<!-- This is for debugging using the weinre module on debug.phonegap.com -->
 	<!-- // <script src="http://debug.phonegap.com/target/target-script-min.js#TKOLaredo"></script> -->
 	
-	<script src="childbrowser.js"></script>
+	<script src="childbrowser.android.js"></script>
 	
 	<!-- // <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script> -->
 	<script src="http://maps.google.com/maps/api/js?sensor=true" type="text/javascript"></script>
@@ -136,11 +134,13 @@
 
 	<script src="js/restutils.js"></script>
 	<script src="js/rester.js"></script>	
-
+	<script src="js/index.js"></script>
+	
 	<script type="text/javascript">
 		jQuery.fn.outerHTML = function() {
 			return jQuery('<div />').append(this.eq(0).clone()).html();
 		};
+		app.initialize();
 		Rester.initialize();
 		Rester.fixWindow();
 	</script>

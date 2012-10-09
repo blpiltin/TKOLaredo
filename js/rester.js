@@ -106,10 +106,10 @@ var Rester = {
 		$(document).bind("mobileinit", function() {
 			
 			$.mobile.allowCrossDomainPages = true;
-			// $.mobile.defaultPageTransition = 'slide';
-			// $.mobile.touchOverflowEnabled = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
+			$.mobile.phonegapNavigationEnabled = true;
+			
 			// $.mobile.page.prototype.options.domCache = true;
 			
 			// // This allows jQuery to access the cached data for ajax failures.
@@ -140,12 +140,6 @@ var Rester = {
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
 				Rester.createMap();
-				
-				// Rester.loadSharePage();
-				// Rester.loadMenuPage();
-				// Rester.loadEventsPage();
-				// Rester.loadPicturesGalleryPage();
-				// Rester.loadMusicPage();
 				
 			} catch (x) {
 				alert(x.message);
@@ -681,7 +675,7 @@ var Rester = {
 	
 	loadMusicPage: function() {
 		
-		RestUtils.debug("Rester.laodMusicPage()", "Loading music usinc SCPLayer.");
+		RestUtils.debug("Rester.laodMusicPage()", "Loading music using SC-PLayer.");
 				
 		$('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
 		$('a.sc-player, div.sc-player').scPlayer();
