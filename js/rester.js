@@ -54,6 +54,8 @@ var Rester = {
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
 	
+	ajaxTimeout: 10000,
+	
 	// The maximum number of photos on the front page scroll
 	MAX_SCROLL: 12,
 	// The current number of photos in the front page scroll
@@ -62,8 +64,8 @@ var Rester = {
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
 
-	db: new Lawnchair({name:'db'}, function(store) {
-		RestUtils.debug("Rester.db", "Database created succesfully.");
+	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
+		RestUtils.debug("Rester.db", "Database created succesfully. Using DOM adapter.");
 	}),
 	
 	setProp: function(id, value) {
@@ -73,7 +75,7 @@ var Rester = {
 	getProp: function(id) {
 		var val = "";
 		this.db.get(id, function(obj) {
-			if (obj === undefined) return obj;
+			if (obj === undefined || obj === null) return undefined;
 			val = obj.val;
 		});
 		return val;
@@ -144,6 +146,10 @@ var Rester = {
 			} catch (x) {
 				alert(x.message);
 			}
+		});
+		
+		$(document).bind("pageshow", function(event, ui) {
+			Rester.setStatusMsg("");
 		});
 		
 		$('#homePage').live('pageshow', function(e) {
@@ -286,6 +292,10 @@ var Rester = {
 		});
 	},
 	
+	setStatusMsg: function(text) {
+		$('.statusMsg').html(text);
+	},
+	
 	getBasePath: function() {
 		if (this.getProp('basePath') === undefined || this.getProp('basePath') === "") {
 			this.setProp('basePath', $.mobile.path.get(window.location.href));
@@ -368,8 +378,8 @@ var Rester = {
 			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
-			// timeout: '2000',
-			// ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
+			ifModified: 'true',
 			
 			success: function(data) {
 				
@@ -440,6 +450,7 @@ var Rester = {
 	},
 	
 	createMap: function() {
+		if (!googleMaps) return;
 		$('#map_canvas').gmap('destroy');
 		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
 		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
@@ -451,14 +462,13 @@ var Rester = {
 	},
 	
 	loadMenuPage: function() {
-		var error = "";
-
 		RestUtils.debug("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
 			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 		
 				var categories = [];
@@ -489,20 +499,15 @@ var Rester = {
 				$('#menuCategories').listview('refresh');
 			},
 			error: function() {
-				error = 'An error occured loading the menu. Please be sure you are connected to the internet.';
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
 			}
 		});
-		
-		if (error != "") throw error;
 	},
 
 	loadMenuCategoryPage: function() {
 
-		RestUtils.debug("1", "Got here");
-		// var menuCategory = decodeURIComponent(RestUtils.getURLParameter("category"));
 		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 		
-		RestUtils.debug("2", "Got here");		
 		RestUtils.debug(
 			"Rester.loadMenuCategoryPage()", 
 			"Loading menu category " + menuCategory + " from " + 
@@ -511,7 +516,8 @@ var Rester = {
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
-			// ifModified: 'true',
+			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 
 				var description = "";
@@ -537,12 +543,15 @@ var Rester = {
 				});
 				$('#menuItems').html(newHTML);
 				$('#menuItems').listview('refresh');
+			}, 
+			error: function() {
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
 			}
 		});
 	},
 
 	loadMenuItemPage: function() {
-		var error = "";
+		
 		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
 
 		RestUtils.debug(
@@ -553,6 +562,7 @@ var Rester = {
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
 			dataType: Rester.dataType,
 			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 
 				var title = "";
@@ -579,24 +589,21 @@ var Rester = {
 							'<div class="menuItemDetailsPrice">Price: ' + price + '</div></div>');
 					}
 				});
-			},
+			}, 
 			error: function() {
-				error = 'An error occured loading the menu. Please be sure you are connected to the internet.';
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
 			}
 		});
-		if (error != "") throw error;
 	},
 
 	loadEventsPage: function() {
-		var error = "";
-		
 		RestUtils.debug("Rester.loadEventsPage()", "Loading events.");
 		
 		$('#wall').facebookWall({
 			id: Rester.getLocProp('fbID'),
 			access_token: Rester.fbAccessToken
 		});
-		
+
 		// //$("#facebookFeed").facebookfeed({access_token:'208593485852783|DR_IYpYWIqC5wZ1cE6TouXcXOOI'});
 		//  $("#facebookFeed").facebookfeed(
 		// 	{
@@ -608,8 +615,6 @@ var Rester = {
 	},
 
 	loadPicturesPage: function() {
-		var error = "";
-		
 		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
@@ -617,6 +622,7 @@ var Rester = {
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 			dataType: Rester.dataType,
 			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 				$($(RestUtils.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
@@ -628,10 +634,9 @@ var Rester = {
 				$('#galleryList').listview('refresh');
 			},
 			error: function() {
-				error = 'An error occured loading the pictures. Please be sure you are connected to the internet.';
+				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
 			}
 		});
-		if (error != "") throw error;
 	},
 
 	loadPicturesGalleryPage: function(e) {
@@ -644,6 +649,7 @@ var Rester = {
 			url: Rester.proxyURL + galleryURL,
 			dataType: Rester.dataType,
 			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 
 				var text = "";
@@ -664,6 +670,9 @@ var Rester = {
 						'enableKeyboard': false
 					});
 				}
+			},
+			error: function() {
+				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
 			}
 		});
 	}, 

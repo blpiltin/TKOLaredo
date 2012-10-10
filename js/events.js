@@ -28,7 +28,9 @@
 		},options);
 
 		// Putting together the Facebook Graph API URLs:
-
+		
+		// TODO: Use ajax call to timeout and display status on failure.
+		
 		// var graphUSER = 'https://graph.facebook.com/'+options.id+'/?fields=name,picture&access_token='+options.access_token+'&callback=?',
 		var graphUSER = 'https://graph.facebook.com/'+options.id+'/',
 			graphPOSTS = 'https://graph.facebook.com/'

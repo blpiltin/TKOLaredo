@@ -13,7 +13,7 @@ var RestUtils = {
 	 */
 	debug: function(functionName, message) {
 		if (this.debugLevel > 0) {
-			console.log(functionName + " :: " + message);
+			console.debug(functionName + " :: " + message);
 		}
 	},
 	

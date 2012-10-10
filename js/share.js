@@ -55,13 +55,14 @@ var Facebook = {
 		if (loc.indexOf("https://www.facebook.com/connect/login_success.html") >= 0) {
 			
 			var fbCode = loc.match(/code=(.*)$/)[1]
+			fbCode = fbCode.replace("#_=_","");
 			
 			var tempUrl = 'https://graph.facebook.com/oauth/access_token?client_id=' + 
 				fb_client_id + '&client_secret=' + fb_secret + '&code=' + 
 				fbCode + '&redirect_uri=https://www.facebook.com/connect/login_success.html';
 				
 			RestUtils.debug("Facebook.facebookLocChanged()", 
-				"Attempting to longing using " + tempUrl);
+				"Attempting to login using " + tempUrl);
 			
 			$.ajax({
 				url: 'https://graph.facebook.com/oauth/access_token?client_id=' + 
@@ -83,9 +84,13 @@ var Facebook = {
 				},
 				error: function(xhr, ajaxOptions, thrownError) {
 		
-					RestUtils.debug("Facebook.facebookLocChanged()", "Login failure: " + thrownError);
-								
+					RestUtils.debug("Facebook.facebookLocChanged()", "Login failure: " + thrownError + "...aborting.");
+					
 					window.plugins.childBrowser.close();
+					
+					alert("Authorization attempt failed. Please try again later.");
+					
+					$.mobile.changePage("index.html");
 				}
 			});
 		}
@@ -96,9 +101,8 @@ var Facebook = {
 		// Create our request and open the connection
 		var req = new XMLHttpRequest();
 		req.open("POST", url, true);
-
-
 		req.send(null);
+		
 		return req;
 	},
 
@@ -107,6 +111,8 @@ var Facebook = {
 		// Our Base URL which is composed of our request type and our localStorage facebook_token
 		var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + Rester.getFacebookToken();
 
+		console.debug("Facebook.post() :: Creating a post at url: "+url);
+		
 		// Build our URL
 		for (var key in params) {
 			if (key == "message") {
