@@ -6,6 +6,7 @@
  *
  * Author: Brian Piltin. Copyright (C) 2012. All rights reserved.
  */
+// "use strict";
 
 var Rester = {
 		
@@ -68,15 +69,69 @@ var Rester = {
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
 	
+	/**
+	 * Utility function for debugging. Use:
+	 * console.log("MyClass.someFunction()", "This is my output message");
+	 */
+	debug: function(functionName, message) {
+		if (console.log !== undefined) {
+			console.log(functionName + " :: " + message);
+		}
+	},
+	
+	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
+		console.log("Rester.db", "Database created succesfully. Using DOM adapter.");
+	}),
+	
+	setProp: function(id, value) {
+		Rester.db.save({key: id, val: value});
+	},
+	
+	getProp: function(id) {
+		var val = "";
+		Rester.db.get(id, function(obj) {
+			if (obj === undefined || obj === null) { return undefined; }
+			val = obj.val;
+		});
+		return val;
+	},
+	
+	/**
+	 * Change the case of a string to title case.
+	 */
+	toTitleCase: function(str) {
+		return str.replace(/\w\S*/g, function(txt) {
+			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+		});
+	},
+	
+	/**
+	 * Get the contents of JSON or XML data depending on the type.
+	 */
+	getDataContents: function(data) {
+		return (typeof data === 'string') ? data : data.contents;
+	},
+
+	/**
+	 * Get a parameter from a URL.
+	 */
+	getURLParameter: function(name) {
+		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+		if (results === null) {
+			return null;
+		} else {
+			return results[1] || 0;
+		}
+	},
+	
+	setStatusMsg: function(text) {
+		$('.statusMsg').html(text);
+	},
+	
 	// Rester Constructor
 	initialize: function() {
-		this.proxyTest();
-		this.bindEvents();
-		
-		// this.db.save({key: 'location', value: '10'});
-		// 		var value = this.db.get('location', function(obj) {
-		// 			Rester.debug('Rester.initialize()', 'Testing db... location = ' + obj.value);
-		// 		});
+		Rester.proxyTest();
+		Rester.bindEvents();
 	},
 	
 	// Bind Event Listeners
@@ -85,9 +140,9 @@ var Rester = {
 	// `load`, `deviceready`, `offline`, and `online`.
 	bindEvents: function() {
 		
-		Rester.debug("Rester.bindEvents()", "Binding events... ");
+		console.log("Rester.bindEvents()", "Binding events... ");
 		
-		document.addEventListener('deviceready', this.onDeviceReady, false);
+		document.addEventListener('deviceready', Rester.onDeviceReady, false);
 		
 		$(window).bind('orientationchange', function() {
 			Rester.updateOrientation();
@@ -98,7 +153,7 @@ var Rester = {
 			$.mobile.allowCrossDomainPages = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
-			$.mobile.phonegapNavigationEnabled = true;
+			// $.mobile.phonegapNavigationEnabled = true;
 			
 			// $.mobile.page.prototype.options.domCache = true;
 			
@@ -128,7 +183,6 @@ var Rester = {
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
-				Rester.createMap();
 				
 			} catch (x) {
 				alert(x.message);
@@ -152,6 +206,7 @@ var Rester = {
 			try {
 				Rester.loadSharePage();
 			} catch (x) {
+				$.mobile.changePage("index.html");
 				alert(x.message);
 			}
 		});
@@ -215,7 +270,7 @@ var Rester = {
 				var
 				currentPage = $(e.target),
 					photoSwipeInstance = window.photoSwipe; // PhotoSwipe.getInstance(currentPage.attr('id'));
-
+				
 				if (typeof photoSwipeInstance != "undefined" && photoSwipeInstance != null) {
 					delete photoSwipeInstance;
 				}
@@ -252,72 +307,72 @@ var Rester = {
 	 */
 	updateOrientation: function() {
 		var winOr = window.orientation;
-		if (winOr == 0 || winOr == 180) { // portrait
+		if (winOr === 0 || winOr === 180) { // portrait
 			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
 		} else { // landscape
 			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');								
 		}
 		// $(document).width($(window).width());
 		// Prevent the icons from getting pushed off bottom of window.
-		this.fixWindow();
-		this.fixScroller();
-		this.fixMusicPlayer();
-		// if ($.mobile.activePage === $("#homePage")) {
-			Rester.loadHomePage();
-			Rester.debug("Rester.updateOrientation()", "Reloading home page.");
-		// }
+		Rester.fixWindow();
+		Rester.fixScroller();
+		Rester.fixMusicPlayer();
+		// // if ($.mobile.activePage === $("#homePage")) {
+		// 	Rester.loadHomePage();
+		// 	console.log("Rester.updateOrientation()", "Reloading home page.");
+		// // }
 	},
 
 	proxyTest: function() {
 		$.ajax({
 			url: Rester.albumURL, 
-			dataType: "xml",
+			dataType: "html",
 			success: function(data) {
 				Rester.proxyURL = "";
-				Rester.dataType = "xml";
-				Rester.debug("Rester.proxyTest()", "Not using proxy server.");
+				Rester.dataType = "html";
+				console.log("Rester.proxyTest()", "Not using proxy server.");
 			},
 			error: function(data) {
-				Rester.debug("Rester.proxyTest()", "Using proxy server.");
+				console.log("Rester.proxyTest()", "Using proxy server.");
 			}
 		});
 	},
 		
 	getBasePath: function() {
-		if (this.getProp('basePath') === undefined || this.getProp('basePath') === "") {
-			this.setProp('basePath', $.mobile.path.get(window.location.href));
+		if (Rester.getProp('basePath') === undefined || Rester.getProp('basePath') === "") {
+			Rester.setProp('basePath', $.mobile.path.get(window.location.href));
 		}
-		return this.getProp('basePath');
+		return Rester.getProp('basePath');
 	},
 	
 	getFacebookToken: function() {
-		return this.getProp('fbToken');
+		return Rester.getProp('fbToken');
 	},
 	
 	setFacebookToken: function(token) {
-		this.setProp('fbToken', token);
+		Rester.setProp('fbToken', token);
 	},
 	
 	initializeLocation: function() {
 		var loc = Rester.getLocation();
 		if (loc === undefined || loc === "") {
-			Rester.debug("initializeLocation()", "Location undefined.");
+			console.log("initializeLocation()", "Location undefined.");
 			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
 			// $("#popupLocation").popup("open");
 		}
 	},
 	
 	getLocation: function() {
-		return this.getProp('location');
+		return Rester.getProp('location');
 	},
 	
 	setLocation: function(toLocation) {
-		this.setProp('location', toLocation);
+		Rester.setProp('location', toLocation);
 		// localStorage.setItem('tkoLastLocToken', toLocation);
 	},
 	
 	getLocProp: function(prop) {
-		return this.locations[Rester.getLocation()][prop];
+		return Rester.locations[Rester.getLocation()][prop];
 	},
 	
 	createLocationMenu: function() {
@@ -327,13 +382,15 @@ var Rester = {
 		var text = "";
 		var active = "";
 		
-		for (var i = 0; i < this.locations.length; i++) {
-			if (i === Rester.getLocation()) active = 'class="ui-list-active"';
+		for (var i = 0; i < Rester.locations.length; i++) {
+			if (i === Rester.getLocation()) {
+				active = 'class="ui-list-active"';
+			}
 			text += 
 				'<li><a data-rel="popup" href="#locationMenuLevel1" onClick="Rester.switchLocation(event);" ' +
 				active + '>' +
-				this.locations[i].name + 
-				'</a></li>'
+				Rester.locations[i].name + 
+				'</a></li>';
 		}
 		
 		$('#locationMenu').html(text);
@@ -342,14 +399,14 @@ var Rester = {
 	
 	switchLocation: function(e) {
 		var location = 0;
-		for (var i = 0; i < this.locations.length; i++) {
-			if (this.locations[i].name === e.currentTarget.innerHTML) {
-				if (i != Rester.getLocation()) {
+		for (var i = 0; i < Rester.locations.length; i++) {
+			if (Rester.locations[i].name === e.currentTarget.innerHTML) {
+				if (i !== Rester.getLocation()) {
 					Rester.setLocation(i);
-					if (Rester.getLocProp('customCSS') != '') 
+					if (Rester.getLocProp('customCSS') !== '') {
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-					this.createMap();
-					this.loadHomePage();
+					}
+					Rester.loadHomePage();
 				}
 			}
 		}
@@ -359,8 +416,10 @@ var Rester = {
 		
 		var galleryURL = "";
 		
-		Rester.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		console.log("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
 							
+		Rester.createMap();
+						
 		$.ajax({
 			
 			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
@@ -372,7 +431,6 @@ var Rester = {
 				
 				temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
 				galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
-				galleryURL = encodeURIComponent(galleryURL);
 				
 				$.ajax({
 					url: Rester.proxyURL + galleryURL,
@@ -389,10 +447,10 @@ var Rester = {
 							Rester.scrollSize++;
 							text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
 								'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
-							indicator += (i == 0) ? '' : '<li>' + (i + 1) + '</li>';
-						};
+							indicator += ((i === 0) ? '' : '<li>' + (i + 1) + '</li>');
+						}
 		
-						if (text != '') {
+						if (text !== '') {
 							$('#thelist').html(text);
 							Rester.fixScroller();
 							window.myScroll = new iScroll('wrapper', {
@@ -403,13 +461,13 @@ var Rester = {
 						}
 					},
 					error: function() {
-						Rester.debug("loadHomePage()", 
+						console.log("loadHomePage()", 
 							"An error occured loading the pictures. Please be sure you are connected to the internet.");
 					}
 				});
 			},
 			error: function() {
-				Rester.debug("loadHomePage()", 
+				console.log("loadHomePage()", 
 					"An error occured loading the pictures. Please be sure you are connected to the internet.");
 			}
 		});
@@ -420,12 +478,13 @@ var Rester = {
 		$('#wrapper').css("width", $(window).width() + 'px');
 		var scrollStr = $('#scroller li').css('width');
 		var scrollWidth = scrollStr.substring(0, scrollStr.length - 2);
-		$('#scroller').css("width", scrollWidth * this.scrollSize);
+		$('#scroller').css("width", scrollWidth * Rester.scrollSize);
 	},
 	
 	setHeaderImage: function() {
-		if (Rester.getLocProp('customCSS') != '') 
+		if (Rester.getLocProp('customCSS') !== '') {
 			$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
+		}
 	},
 	
 	setTelephoneLink: function() {
@@ -437,7 +496,7 @@ var Rester = {
 	},
 	
 	createMap: function() {
-		if (!googleMaps) return;
+		if (!googleMaps) { return; }
 		$('#map_canvas').gmap('destroy');
 		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
 		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
@@ -449,7 +508,7 @@ var Rester = {
 	},
 	
 	loadMenuPage: function() {
-		Rester.debug("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
+		console.log("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
@@ -469,18 +528,20 @@ var Rester = {
 					description = $(this).find('a').attr('title');
 					image = $(this).find('img').attr('src');
 					category = description.split(';')[0];
-					if (categories.indexOf(category) == -1) {
+					if (categories.indexOf(category) === -1) {
 						categories.push(category);
 						images.push(image);
 					}
 				});
 		
 				$.each(categories, function(i, val) {
-					if (val === ' ') val = 'Uncategorizable';
-						newHTML += '<li class="menuCategory">' + 
-						'<a href="menucategory.html" ' + 
-						'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
-						'<img src="' + images[i] + '"/>' + Rester.toTitleCase(val) + '</a></li>';
+					if (val === ' ') {
+						val = 'Uncategorizable';
+					}
+					newHTML += '<li class="menuCategory">' + 
+					'<a href="menucategory.html" ' + 
+					'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
+					'<img src="' + images[i] + '"/>' + Rester.toTitleCase(val) + '</a></li>';
 				});
 				$('#menuCategories').html(newHTML);
 				$('#menuCategories').listview('refresh');
@@ -495,7 +556,7 @@ var Rester = {
 
 		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 		
-		Rester.debug(
+		console.log(
 			"Rester.loadMenuCategoryPage()", 
 			"Loading menu category " + menuCategory + " from " + 
 			Rester.proxyURL + Rester.getLocProp('menuURL'));
@@ -541,7 +602,7 @@ var Rester = {
 		
 		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
 
-		Rester.debug(
+		console.log(
 			"Rester.loadMenuItemPage()", 
 			"Loading menu item " + menuItem + " from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
@@ -584,7 +645,7 @@ var Rester = {
 	},
 
 	loadEventsPage: function() {
-		Rester.debug("Rester.loadEventsPage()", "Loading events.");
+		console.log("Rester.loadEventsPage()", "Loading events.");
 		
 		$('#wall').facebookWall({
 			id: Rester.getLocProp('fbID'),
@@ -593,7 +654,7 @@ var Rester = {
 	},
 
 	loadPicturesPage: function() {
-		Rester.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
+		console.log("Rester.loadPicturesPage()", "Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
 		$.ajax({
@@ -605,7 +666,7 @@ var Rester = {
 				$($(Rester.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
 						'<a href="picturesgallery.html" ' + 
-						'onclick=\'Rester.setProp("galleryURL", "' + encodeURIComponent($(this).find('a').attr('href')) + '");\'>' +
+						'onclick=\'Rester.setProp("galleryURL", "' + $(this).find('a').attr('href') + '");\'>' +
 						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
 						Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
 				});
@@ -621,7 +682,7 @@ var Rester = {
 
 		var galleryURL = Rester.getProp("galleryURL");
 
-		Rester.debug("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
+		console.log("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
 				
 		$.ajax({
 			url: Rester.proxyURL + galleryURL,
@@ -639,7 +700,7 @@ var Rester = {
 						'<img src="' + $(this).find('img').attr('src') + '" alt="' + $(this).find('img').attr('alt') + '"/>' + '</a></div>';
 				});
 
-				if (text != "") {
+				if (text !== "") {
 					$('#Gallery').html(text);
 					window.photoSwipe = $("#Gallery a").photoSwipe({
 						'jQueryMobile': true,
@@ -662,69 +723,10 @@ var Rester = {
 	
 	loadMusicPage: function() {
 		
-		Rester.debug("Rester.laodMusicPage()", "Loading music using SC-PLayer.");
+		console.log("Rester.loadMusicPage()", "Loading music using SC-PLayer.");
 				
 		$('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
 		$('a.sc-player, div.sc-player').scPlayer();
-		this.fixMusicPlayer();
-	}, 
-	
-	setStatusMsg: function(text) {
-		$('.statusMsg').html(text);
-	},
-	
-	/**
-	 * Utility function for debugging. Use:
-	 * Rester.debug("MyClass.someFunction()", "This is my output message");
-	 */
-	debug: function(functionName, message) {
-		if (Rester.DEBUG != undefined) {
-			console.debug(functionName + " :: " + message);
-		}
-	},
-	
-	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
-		// Rester.debug("Rester.db", "Database created succesfully. Using DOM adapter.");
-	}),
-	
-	setProp: function(id, value) {
-		this.db.save({key: id, val: value});
-	},
-	
-	getProp: function(id) {
-		var val = "";
-		this.db.get(id, function(obj) {
-			if (obj === undefined || obj === null) return undefined;
-			val = obj.val;
-		});
-		return val;
-	},
-	
-	/**
-	 * Change the case of a string to title case.
-	 */
-	toTitleCase: function(str) {
-		return str.replace(/\w\S*/g, function(txt) {
-			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-		});
-	},
-	
-	/**
-	 * Get the contents of JSON or XML data depending on the type.
-	 */
-	getDataContents: function(data) {
-		return (typeof data === 'string') ? data : data.contents;
-	},
-
-	/**
-	 * Get a parameter from a URL.
-	 */
-	getURLParameter: function(name) {
-		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
-		if (results == null) {
-			return null;
-		} else {
-			return results[1] || 0;
-		}
+		Rester.fixMusicPlayer();
 	}
 };

@@ -27,6 +27,8 @@ var Facebook = {
 
 	init: function() {
 
+		console.log("Facebook.init() :: Initializing facebook object.");
+		
 		// Begin Authorization
 		var authorize_url = "https://graph.facebook.com/oauth/authorize?";
 		authorize_url += "client_id=" + fb_client_id;
@@ -34,17 +36,22 @@ var Facebook = {
 		authorize_url += "&display=" + fb_display;
 		authorize_url += "&scope=publish_stream,offline_access";
 
+		console.log("Facebook.init() :: childbrowser == " + window.plugins.childBrowser);
+		
 		if (window.plugins.childBrowser == null) {
+			console.log("Facebook.init() :: Installing childbrowser.");
 			ChildBrowser.install();
 		}
+		
 		client_browser = window.plugins.childBrowser;
 
 		client_browser.onLocationChange = function(loc) {
+			console.log("Facebook.init() :: Setting onLocationChange callback.");
 			Facebook.facebookLocChanged(loc);
 		}
 		
 		if (client_browser != null) {
-			Rester.debug("Facebook.init()", "Showing login.");
+			console.log("Facebook.init()", "Showing login.");
 			window.plugins.childBrowser.showWebPage(authorize_url);
 		}
 	},
@@ -61,7 +68,7 @@ var Facebook = {
 				fb_client_id + '&client_secret=' + fb_secret + '&code=' + 
 				fbCode + '&redirect_uri=https://www.facebook.com/connect/login_success.html';
 				
-			Rester.debug("Facebook.facebookLocChanged()", 
+			console.log("Facebook.facebookLocChanged()", 
 				"Attempting to login using " + tempUrl);
 			
 			$.ajax({
@@ -73,7 +80,7 @@ var Facebook = {
 				type: 'POST',
 				success: function(data, status) {
 					
-					Rester.debug("Facebook.facebookLocChanged()", "Login success.");
+					console.log("Facebook.facebookLocChanged()", "Login success.");
 					
 					// We store our token in a localStorage Item called facebook_token
 					Rester.setFacebookToken(data.split("=")[1]);
@@ -84,7 +91,7 @@ var Facebook = {
 				},
 				error: function(xhr, ajaxOptions, thrownError) {
 		
-					Rester.debug("Facebook.facebookLocChanged()", "Login failure: " + thrownError + "...aborting.");
+					console.log("Facebook.facebookLocChanged()", "Login failure: " + thrownError + "...aborting.");
 					
 					window.plugins.childBrowser.close();
 					
@@ -111,7 +118,7 @@ var Facebook = {
 		// Our Base URL which is composed of our request type and our localStorage facebook_token
 		var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + Rester.getFacebookToken();
 
-		console.debug("Facebook.post() :: Creating a post at url: "+url);
+		console.log("Facebook.post() :: Creating a post at url: "+url);
 		
 		// Build our URL
 		for (var key in params) {
@@ -142,7 +149,7 @@ var Facebook = {
 
 		alert("Wall post created successfully.");
 		
-		Rester.debug("Facebook.success()", "Post created succesfully.");
+		console.log("Facebook.success()", "Post created succesfully.");
 		
 		$.mobile.changePage("index.html");
 	},
@@ -152,7 +159,7 @@ var Facebook = {
 		// First lets check to see if we have a user or not
 		if (Rester.getFacebookToken() === 'undefined' || Rester.getFacebookToken() === "") {
 			
-			Rester.debug("Facebook.bodyLoad()", "Don't have local token yet.");
+			console.log("Facebook.bodyLoad()", "Don't have local token yet.");
 
 			$("#fbStatus").hide();			
 			$("#fbLoginArea").show();
@@ -162,7 +169,7 @@ var Facebook = {
 			});
 		} else {
 			
-			Rester.debug("Facebook.bodyLoad()", "Logged in.");
+			console.log("Facebook.bodyLoad()", "Logged in.");
 			
 			$("#fbLoginArea").hide();
 			$("#fbStatus").show();
