@@ -44,7 +44,7 @@ var Facebook = {
 		}
 		
 		if (client_browser != null) {
-			RestUtils.debug("Facebook.init()", "Showing login.");
+			Rester.debug("Facebook.init()", "Showing login.");
 			window.plugins.childBrowser.showWebPage(authorize_url);
 		}
 	},
@@ -61,7 +61,7 @@ var Facebook = {
 				fb_client_id + '&client_secret=' + fb_secret + '&code=' + 
 				fbCode + '&redirect_uri=https://www.facebook.com/connect/login_success.html';
 				
-			RestUtils.debug("Facebook.facebookLocChanged()", 
+			Rester.debug("Facebook.facebookLocChanged()", 
 				"Attempting to login using " + tempUrl);
 			
 			$.ajax({
@@ -73,7 +73,7 @@ var Facebook = {
 				type: 'POST',
 				success: function(data, status) {
 					
-					RestUtils.debug("Facebook.facebookLocChanged()", "Login success.");
+					Rester.debug("Facebook.facebookLocChanged()", "Login success.");
 					
 					// We store our token in a localStorage Item called facebook_token
 					Rester.setFacebookToken(data.split("=")[1]);
@@ -84,7 +84,7 @@ var Facebook = {
 				},
 				error: function(xhr, ajaxOptions, thrownError) {
 		
-					RestUtils.debug("Facebook.facebookLocChanged()", "Login failure: " + thrownError + "...aborting.");
+					Rester.debug("Facebook.facebookLocChanged()", "Login failure: " + thrownError + "...aborting.");
 					
 					window.plugins.childBrowser.close();
 					
@@ -142,7 +142,7 @@ var Facebook = {
 
 		alert("Wall post created successfully.");
 		
-		RestUtils.debug("Facebook.success()", "Post created succesfully.");
+		Rester.debug("Facebook.success()", "Post created succesfully.");
 		
 		$.mobile.changePage("index.html");
 	},
@@ -152,7 +152,7 @@ var Facebook = {
 		// First lets check to see if we have a user or not
 		if (Rester.getFacebookToken() === 'undefined' || Rester.getFacebookToken() === "") {
 			
-			RestUtils.debug("Facebook.bodyLoad()", "Don't have local token yet.");
+			Rester.debug("Facebook.bodyLoad()", "Don't have local token yet.");
 
 			$("#fbStatus").hide();			
 			$("#fbLoginArea").show();
@@ -162,7 +162,7 @@ var Facebook = {
 			});
 		} else {
 			
-			RestUtils.debug("Facebook.bodyLoad()", "Logged in.");
+			Rester.debug("Facebook.bodyLoad()", "Logged in.");
 			
 			$("#fbLoginArea").hide();
 			$("#fbStatus").show();

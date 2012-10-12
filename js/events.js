@@ -64,7 +64,7 @@
 				// 				this.from.picture = fb.user.picture;
 				// 			}
 				// 			
-				// 			RestUtils.debug('wallscript()', 'picture=' + this.from.picture);
+				// 			Rester.debug('wallscript()', 'picture=' + this.from.picture);
 				this.from.picture = Rester.getLocProp('fbPicture');
 				
 				// Converting the created_time (a UNIX timestamp) to
