@@ -9,6 +9,9 @@
 
 var Rester = {
 		
+	// Change the debug level to 0 to suppress console output messages.
+	DEBUG: 1,
+	
 	// Data for each individual restaurant location
 	locations: [
 		{	
@@ -37,7 +40,7 @@ var Rester = {
 			'latitude': '27.590219',
 			'longitude': '-99.482717',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
-			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
+			'picturesURL': 'http://v2.laredoheat.com/?page_id=2250',
 			'musicURL': 'http://soundcloud.com/vjdrock',
 			'fbID': '100004085199809',
 			'fbName': 'The TKO Laredo app for iPhone.',
@@ -51,10 +54,11 @@ var Rester = {
 		
 	// The URL for the proxy server to convert html to jsonp
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
+
+	ajaxTimeout: 10000,
+	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
-	
-	ajaxTimeout: 10000,
 	
 	// The maximum number of photos on the front page scroll
 	MAX_SCROLL: 12,
@@ -63,33 +67,15 @@ var Rester = {
 	
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
-
-	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
-		RestUtils.debug("Rester.db", "Database created succesfully. Using DOM adapter.");
-	}),
-	
-	setProp: function(id, value) {
-		this.db.save({key: id, val: value});
-	},
-	
-	getProp: function(id) {
-		var val = "";
-		this.db.get(id, function(obj) {
-			if (obj === undefined || obj === null) return undefined;
-			val = obj.val;
-		});
-		return val;
-	},
 	
 	// Rester Constructor
 	initialize: function() {
 		this.proxyTest();
 		this.bindEvents();
-		this.initializeLocation();
 		
 		// this.db.save({key: 'location', value: '10'});
 		// 		var value = this.db.get('location', function(obj) {
-		// 			RestUtils.debug('Rester.initialize()', 'Testing db... location = ' + obj.value);
+		// 			Rester.debug('Rester.initialize()', 'Testing db... location = ' + obj.value);
 		// 		});
 	},
 	
@@ -99,7 +85,9 @@ var Rester = {
 	// `load`, `deviceready`, `offline`, and `online`.
 	bindEvents: function() {
 		
-		RestUtils.debug("Rester.bindEvents()", "Binding events... ");
+		Rester.debug("Rester.bindEvents()", "Binding events... ");
+		
+		document.addEventListener('deviceready', this.onDeviceReady, false);
 		
 		$(window).bind('orientationchange', function() {
 			Rester.updateOrientation();
@@ -133,9 +121,8 @@ var Rester = {
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
-				
-				RestUtils.debug("homPage:pageinit", "Basepath: " + Rester.getBasePath());
-				
+								
+				Rester.initializeLocation();
 				Rester.createLocationMenu();
 				Rester.setHeaderImage();
 				Rester.setTelephoneLink();
@@ -249,6 +236,10 @@ var Rester = {
 		});
 	},
 	
+	onDeviceReady: function() {
+ 		navigator.splashscreen.hide();
+    },
+
 	fixWindow: function() {
 		$(document).width($(window).width());
 		$('html').css("width", $(window).width());
@@ -273,7 +264,7 @@ var Rester = {
 		this.fixMusicPlayer();
 		// if ($.mobile.activePage === $("#homePage")) {
 			Rester.loadHomePage();
-			RestUtils.debug("Rester.updateOrientation()", "Reloading home page.");
+			Rester.debug("Rester.updateOrientation()", "Reloading home page.");
 		// }
 	},
 
@@ -284,18 +275,14 @@ var Rester = {
 			success: function(data) {
 				Rester.proxyURL = "";
 				Rester.dataType = "xml";
-				RestUtils.debug("Rester.proxyTest()", "Not using proxy server.");
+				Rester.debug("Rester.proxyTest()", "Not using proxy server.");
 			},
 			error: function(data) {
-				RestUtils.debug("Rester.proxyTest()", "Using proxy server.");
+				Rester.debug("Rester.proxyTest()", "Using proxy server.");
 			}
 		});
 	},
-	
-	setStatusMsg: function(text) {
-		$('.statusMsg').html(text);
-	},
-	
+		
 	getBasePath: function() {
 		if (this.getProp('basePath') === undefined || this.getProp('basePath') === "") {
 			this.setProp('basePath', $.mobile.path.get(window.location.href));
@@ -314,7 +301,7 @@ var Rester = {
 	initializeLocation: function() {
 		var loc = Rester.getLocation();
 		if (loc === undefined || loc === "") {
-			RestUtils.debug("initializeLocation()", "Location undefined.");
+			Rester.debug("initializeLocation()", "Location undefined.");
 			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
 			// $("#popupLocation").popup("open");
 		}
@@ -372,7 +359,7 @@ var Rester = {
 		
 		var galleryURL = "";
 		
-		RestUtils.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		Rester.debug("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
 							
 		$.ajax({
 			
@@ -383,7 +370,7 @@ var Rester = {
 			
 			success: function(data) {
 				
-				temp = $(RestUtils.getDataContents(data)).find('div.ngg-album').get();
+				temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
 				galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
 				galleryURL = encodeURIComponent(galleryURL);
 				
@@ -395,7 +382,7 @@ var Rester = {
 						var style = "";
 						var text = "";
 						var indicator = '<li class="active">1</li>';
-						var images = $(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
+						var images = $(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
 						Rester.scrollSize = 0;
 		
 						for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
@@ -416,13 +403,13 @@ var Rester = {
 						}
 					},
 					error: function() {
-						RestUtils.debug("loadHomePage()", 
+						Rester.debug("loadHomePage()", 
 							"An error occured loading the pictures. Please be sure you are connected to the internet.");
 					}
 				});
 			},
 			error: function() {
-				RestUtils.debug("loadHomePage()", 
+				Rester.debug("loadHomePage()", 
 					"An error occured loading the pictures. Please be sure you are connected to the internet.");
 			}
 		});
@@ -462,7 +449,7 @@ var Rester = {
 	},
 	
 	loadMenuPage: function() {
-		RestUtils.debug("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
+		Rester.debug("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
 		$.ajax({
 			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
@@ -478,7 +465,7 @@ var Rester = {
 				var image = "";
 				var newHTML = "";
 		
-				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					description = $(this).find('a').attr('title');
 					image = $(this).find('img').attr('src');
 					category = description.split(';')[0];
@@ -493,7 +480,7 @@ var Rester = {
 						newHTML += '<li class="menuCategory">' + 
 						'<a href="menucategory.html" ' + 
 						'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
-						'<img src="' + images[i] + '"/>' + RestUtils.toTitleCase(val) + '</a></li>';
+						'<img src="' + images[i] + '"/>' + Rester.toTitleCase(val) + '</a></li>';
 				});
 				$('#menuCategories').html(newHTML);
 				$('#menuCategories').listview('refresh');
@@ -508,7 +495,7 @@ var Rester = {
 
 		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 		
-		RestUtils.debug(
+		Rester.debug(
 			"Rester.loadMenuCategoryPage()", 
 			"Loading menu category " + menuCategory + " from " + 
 			Rester.proxyURL + Rester.getLocProp('menuURL'));
@@ -527,7 +514,7 @@ var Rester = {
 				var price = "";
 				var newHTML = "";
 									
-				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					description = $(this).find('a').attr('title');
 					category = description.split(';')[0];
 					price = description.split(';')[2];
@@ -537,7 +524,7 @@ var Rester = {
 						newHTML += '<li class="menuItem">' +
 							'<a href="menuitem.html" ' + 
 							'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
-							'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + RestUtils.toTitleCase(item) + '</div>' + 
+							'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + Rester.toTitleCase(item) + '</div>' + 
 							'<div class="menuItemPrice">$' + price + '</div></a></li>';
 					}
 				});
@@ -554,7 +541,7 @@ var Rester = {
 		
 		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
 
-		RestUtils.debug(
+		Rester.debug(
 			"Rester.loadMenuItemPage()", 
 			"Loading menu item " + menuItem + " from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
@@ -572,7 +559,7 @@ var Rester = {
 				var price = "";
 				var src = "";
 
-				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					title = $(this).find('img').attr('title');
 					if (title === menuItem) {
 						attributes = $(this).find('a').attr('title');
@@ -582,7 +569,7 @@ var Rester = {
 						price = '$' + attributes[2];
 						src = $(this).find('img').attr('src');
 						$('#menuItem').html('<div class="menuItemDetails">' + 
-							'<div class="menuItemDetailsTitle">' + RestUtils.toTitleCase(menuItem) + '</div>' + 
+							'<div class="menuItemDetailsTitle">' + Rester.toTitleCase(menuItem) + '</div>' + 
 							'<div class="menuItemDetailsImage">' + $(this).find('img').outerHTML() + '</div>' +
 							//'<img href="' + src + '"></img><br/>' + 
 							'<div class="menuItemDetailsDescription">' + description + '</div>' + 
@@ -597,25 +584,16 @@ var Rester = {
 	},
 
 	loadEventsPage: function() {
-		RestUtils.debug("Rester.loadEventsPage()", "Loading events.");
+		Rester.debug("Rester.loadEventsPage()", "Loading events.");
 		
 		$('#wall').facebookWall({
 			id: Rester.getLocProp('fbID'),
 			access_token: Rester.fbAccessToken
 		});
-
-		// //$("#facebookFeed").facebookfeed({access_token:'208593485852783|DR_IYpYWIqC5wZ1cE6TouXcXOOI'});
-		//  $("#facebookFeed").facebookfeed(
-		// 	{
-		// 		access_token:'512052125490353|_kF0WEqfTTkguYp853eydB0Bayk', 
-		// 		id: Rester.getLocProp('fbID'), 
-		// 		template: '<h3>${from.name}</h3><h4>${created_time}</h4><p>${message}</p><p>Read more:&nbsp;<a href="${link}">${name}</a></p>',
-		// 		query:{limit:10, date_format: 'F j, Y, g:i a'}
-		// 	});
 	},
 
 	loadPicturesPage: function() {
-		RestUtils.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
+		Rester.debug("Rester.loadPicturesPage()", "Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
 		$.ajax({
@@ -624,12 +602,12 @@ var Rester = {
 			ifModified: 'true',
 			timeout: Rester.ajaxTimeout,
 			success: function(data) {
-				$($(RestUtils.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
+				$($(Rester.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 					$('#galleryList').append('<li class="galleryList">' + 
 						'<a href="picturesgallery.html" ' + 
 						'onclick=\'Rester.setProp("galleryURL", "' + encodeURIComponent($(this).find('a').attr('href')) + '");\'>' +
 						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
-						RestUtils.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
+						Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
 				});
 				$('#galleryList').listview('refresh');
 			},
@@ -643,7 +621,7 @@ var Rester = {
 
 		var galleryURL = Rester.getProp("galleryURL");
 
-		RestUtils.debug("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
+		Rester.debug("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
 				
 		$.ajax({
 			url: Rester.proxyURL + galleryURL,
@@ -655,7 +633,7 @@ var Rester = {
 				var text = "";
 				var style = "";
 
-				$(RestUtils.getDataContents(data)).find('div.ngg-gallery-thumbnail-box').each(function(i) {
+				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box').each(function(i) {
 					text += '<div class="pictureThumb" style="float:left;margin-left:5px">' + 
 						'<a href="' + $(this).find('a').attr('href') + '" rel="external">' + 
 						'<img src="' + $(this).find('img').attr('src') + '" alt="' + $(this).find('img').attr('alt') + '"/>' + '</a></div>';
@@ -684,10 +662,69 @@ var Rester = {
 	
 	loadMusicPage: function() {
 		
-		RestUtils.debug("Rester.laodMusicPage()", "Loading music using SC-PLayer.");
+		Rester.debug("Rester.laodMusicPage()", "Loading music using SC-PLayer.");
 				
 		$('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
 		$('a.sc-player, div.sc-player').scPlayer();
 		this.fixMusicPlayer();
+	}, 
+	
+	setStatusMsg: function(text) {
+		$('.statusMsg').html(text);
 	},
+	
+	/**
+	 * Utility function for debugging. Use:
+	 * Rester.debug("MyClass.someFunction()", "This is my output message");
+	 */
+	debug: function(functionName, message) {
+		if (Rester.DEBUG != undefined) {
+			console.debug(functionName + " :: " + message);
+		}
+	},
+	
+	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
+		// Rester.debug("Rester.db", "Database created succesfully. Using DOM adapter.");
+	}),
+	
+	setProp: function(id, value) {
+		this.db.save({key: id, val: value});
+	},
+	
+	getProp: function(id) {
+		var val = "";
+		this.db.get(id, function(obj) {
+			if (obj === undefined || obj === null) return undefined;
+			val = obj.val;
+		});
+		return val;
+	},
+	
+	/**
+	 * Change the case of a string to title case.
+	 */
+	toTitleCase: function(str) {
+		return str.replace(/\w\S*/g, function(txt) {
+			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+		});
+	},
+	
+	/**
+	 * Get the contents of JSON or XML data depending on the type.
+	 */
+	getDataContents: function(data) {
+		return (typeof data === 'string') ? data : data.contents;
+	},
+
+	/**
+	 * Get a parameter from a URL.
+	 */
+	getURLParameter: function(name) {
+		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+		if (results == null) {
+			return null;
+		} else {
+			return results[1] || 0;
+		}
+	}
 };
