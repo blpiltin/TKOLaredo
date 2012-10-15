@@ -213,3 +213,88 @@ var site = 'http://query.yahooapis.com/v1/public/yql?q=' + select + '&format=jso
 			});
 		};
 	}
+	
+	// 
+	// 	SC.initialize({
+	// 	    client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
+	// 	  });
+	// 	
+	// var track_url = 'http://api.soundcloud.com/tracks/62759488.json?client_id=1ea1ab57eb6ef387a5c5b2d02484da4d';
+	// 	    SC.get('/resolve', {
+	// 	        // url : track_url
+	// 	 		url : Rester.proxyURL + track_url
+	// 	    }, function(track) {
+	// 
+	// 	        $("#playSound").live("click", function() {
+	// 	            SC.stream("/tracks/" + track.id, function(sound) {
+	// 	                if (sound == null) { return; }
+	// 			alert("got here");
+	// 			Rester.scTrack = sound;
+	// 			Rester.scTrack.play();
+	// 	            });
+	// 	        });
+	// 	
+	// 	$("#stopSound").live("click", function(){
+	// 		if (Rester.scTrack == null) { return; }
+	// 		alert("got here");
+	// 		Rester.scTrack.stop();
+	// 	});
+	// 	
+	// 	    });
+	// 
+	// SC.initialize({
+	//     client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
+	//   });
+	// 
+	//   $("#playSound").live("click", function(){
+	// 	
+	//     SC.stream("/tracks/293", function(sound){
+	// 		if (sound == null) { return; }
+	// 		alert("got here");
+	// 		Rester.scTrack = sound;
+	// 		Rester.scTrack.play();
+	// 	});
+	//   });
+	// 
+	// $("#stopSound").live("click", function(){
+	// 	if (Rester.scTrack == null) { return; }
+	// 	alert("got here");
+	// 	Rester.scTrack.stop();
+	// });
+	
+	// var api = $.sc.api(Rester.scClientID, {
+	//     onAuthSuccess: function(user, container) {
+	//       $('<span class="username">Logged in as: <strong>' + user.username + '</strong></a>').prependTo(container);
+	//       console.log('you are SoundCloud user ' + user.username);
+	//     }
+	//   });
+	// 
+	//   // wait for the API to be available
+	//   $(document).bind($.sc.api.events.AuthSuccess, function(event) {
+	//     var user = event.user;
+	//     // call the api
+	//     api.get('/vjdrock/tracks', function(data) {
+	//       console.log('and here are your tracks', data);
+	//       // you can use new jQuery templating for generating the track list
+	//       $('#track').render(data).appendTo("#track-list");
+	//     });
+	//   });
+	// 
+	// $.ajax({
+	// 	url: Rester.proxyURL + Rester.getLocProp('musicURL'),
+	// 	dataType: Rester.dataType,
+	// 	ifModified: 'true',
+	// 	timeout: Rester.ajaxTimeout,
+	// 	success: function(data) {
+	//   		$(Rester.getDataContents(data)).each(function(data) {
+	//     		console.log(data.title);
+	//   		});
+	// 	},
+	// 	error: function() {
+	// 		Rester.setStatusMsg("Songs will be shown when a network connection is available.");
+	// 	}
+	// });
+	// 		
+	// $('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
+	// $('a.sc-player, div.sc-player').scPlayer();
+	// Rester.fixMusicPlayer();

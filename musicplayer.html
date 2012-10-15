@@ -5,9 +5,10 @@
 </head> 
 <body> 
 	
-	<div data-role="page" id="musicPage" data-theme="a">
+	<div data-role="page" id="musicPlayerPage" data-theme="a">
 	
 		<div data-role="header" data-id="head1" data-position="fixed">
+			<div class="back-btn" onclick="$.mobile.changePage('music.html')"></div>
 			<div class="logo">
 			</div>
 		</div><!-- /header -->
@@ -15,19 +16,11 @@
 		<div data-role="content" id="music-background">	
 			
 			<div class="statusMsg"></div>	<!-- Use this to display ajax loading status. -->
-			<ul id="trackList" data-role="listview" data-filter="false">
-				<!-- <li class="menuCategory">
-					<a href="menucategory.html?category=appetizers"> 
-					<img src="http://www.somepicture.com/picture.jpg"/>Category Title</a></li>
-				<li class="menuCategory">
-					<a href="menucategory.html?category=appetizers"> 
-						<img src="http://www.somepicture.com/picture.jpg"/>Category Title</a></li>
-				<li class="menuCategory">
-					<a href="menucategory.html?category=appetizers"> 
-					<img src="http://www.somepicture.com/picture.jpg"/>Category Title</a></li> -->
-				
-			</ul>
-			<!-- <audio src="http://api.soundcloud.com/tracks/62759488/download?client_id=1ea1ab57eb6ef387a5c5b2d02484da4d" controls preload></audio> -->
+			<div id="audioPlayer">
+				<div id="artworkImg"></div>
+				<div id="audioTitle"></div>
+				<div id="playerWidget"></div>
+			</div>
 			<!-- <input type="button" href="#" id="playSound" class="big button" value="Play" />
 			<input type="button" href="#" id="stopSound" class="big button" value="Stop" />
 			

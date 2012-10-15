@@ -24,7 +24,7 @@ var Rester = {
 			'longitude': '-99.504507',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
-			'musicURL': 'http://soundcloud.com/vjdrock',
+			'musicURL': 'http://api.soundcloud.com/users/vjdrock/tracks.json',
 			'fbID': '184375751588144',
 			'fbName': 'The TKO Laredo app for iPhone.',
 			'fbDescription': "Visit the Laredo Heat website and get the TKO app for iPhone.",
@@ -42,7 +42,7 @@ var Rester = {
 			'longitude': '-99.482717',
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=2250',
-			'musicURL': 'http://soundcloud.com/vjdrock',
+			'musicURL': 'http://api.soundcloud.com/users/vjdrock/tracks.json',
 			'fbID': '100004085199809',
 			'fbName': 'The TKO Laredo app for iPhone.',
 			'fbDescription': "Visit the Laredo Heat website and get the TKO app for iPhone.",
@@ -55,7 +55,8 @@ var Rester = {
 		
 	// The URL for the proxy server to convert html to jsonp
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
-
+	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
+	
 	ajaxTimeout: 10000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
@@ -193,7 +194,7 @@ var Rester = {
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
-				
+
 			} catch (x) {
 				alert(x.message);
 			}
@@ -299,6 +300,15 @@ var Rester = {
 				alert(x.message);
 			}
 		});
+		
+		$('#musicPlayerPage').live('pageshow', function(e) {
+			try {
+				Rester.loadMusicPlayerPage();
+			} catch (x) {
+				$.mobile.changePage("index.html");
+				alert(x.message);
+			}
+		});
 	},
 	
 	onDeviceReady: function() {
@@ -316,11 +326,14 @@ var Rester = {
 	 * orientation has changed.
 	 */
 	updateOrientation: function() {
+		
 		var winOr = window.orientation;
 		if (winOr === 0 || winOr === 180) { // portrait
-			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
+			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
+			$('.menuItemDetailsDescription').css("float", "left");
 		} else { // landscape
-			$('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');								
+			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');
+			$('.menuItemDetailsDescription').css("float", "none");								
 		}
 		// $(document).width($(window).width());
 		// Prevent the icons from getting pushed off bottom of window.
@@ -532,41 +545,62 @@ var Rester = {
 			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 		
-				var categories = [];
-				var images = [];
-				var description = "";
-				var category = "";
-				var image = "";
-				var newHTML = "";
-		
-				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
-					description = $(this).find('a').attr('title');
-					image = $(this).find('img').attr('src');
-					category = description.split(';')[0];
-					if (categories.indexOf(category) === -1) {
-						categories.push(category);
-						images.push(image);
+				if (data == null) {
+					data = Rester.getProp("menu");
+					if (data == null) {
+						Rester.setStatusMsg("There are currently no menu items available. Please check back later.");
+						return;
 					}
-				});
-		
-				$.each(categories, function(i, val) {
-					if (val === ' ') {
-						val = 'Uncategorizable';
-					}
-					newHTML += '<li class="menuCategory">' + 
-					'<a href="menucategory.html" ' + 
-					'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
-					'<img src="' + images[i] + '"/><div class="menuCategoryTitle">' + Rester.toTitleCase(val) + '</div></a></li>';
-				});
-				$('#menuCategories').html(newHTML);
-				$('#menuCategories').listview('refresh');
+				} else {
+					Rester.setProp("menu", data);
+				}
+				
+				Rester.createMenu(data);
 			},
 			error: function() {
-				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+				
+				var data = Rester.getProp("menu");
+				if (data == null) {
+					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+					return;
+				}
+				Rester.createMenu(data);
 			}
 		});
 	},
 
+	createMenu: function(data) {
+		
+		var categories = [];
+		var images = [];
+		var description = "";
+		var category = "";
+		var image = "";
+		var newHTML = "";
+
+		$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+			description = $(this).find('a').attr('title');
+			image = $(this).find('img').attr('src');
+			category = description.split(';')[0];
+			if (categories.indexOf(category) === -1) {
+				categories.push(category);
+				images.push(image);
+			}
+		});
+
+		$.each(categories, function(i, val) {
+			if (val === ' ') {
+				val = 'Uncategorizable';
+			}
+			newHTML += '<li class="menuCategory">' + 
+			'<a href="menucategory.html" ' + 
+			'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
+			'<img src="' + images[i] + '"/><div class="menuCategoryTitle">' + Rester.toTitleCase(val) + '</div></a></li>';
+		});
+		$('#menuCategories').html(newHTML);
+		$('#menuCategories').listview('refresh');
+	},
+	
 	loadMenuCategoryPage: function() {
 
 		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
@@ -611,6 +645,10 @@ var Rester = {
 				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
 			}
 		});
+	},
+	
+	createMenuCategories: function(data) {
+		
 	},
 
 	loadMenuItemPage: function() {
@@ -733,98 +771,79 @@ var Rester = {
 		});
 	}, 
 	
-	fixMusicPlayer: function() {
-		// $('#playerWidget').css('width', $(window).width());
-		// $('.sc-player').css('width', $(window).width());
-	},
-	
 	loadMusicPage: function() {
 		
 		console.log("Rester.loadMusicPage()", "Loading music using SC-PLayer.");
 		
-		var url = "http://api.soundcloud.com/users/vjdrock/tracks.json?client_id=1ea1ab57eb6ef387a5c5b2d02484da4d";
-		
-			SC.initialize({
-			    client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
-			  });
-			
-		var track_url = 'http://api.soundcloud.com/tracks/62759488';
-		    SC.get('/resolve', {
-		        url : track_url
-		    }, function(track) {
-
-		        $("#playSound").live("click", function() {
-		            SC.stream("/tracks/" + track.id, function(sound) {
-		                if (sound == null) { return; }
-						alert("got here");
-						Rester.scTrack = sound;
-						Rester.scTrack.play();
-		            });
-		        });
-		
-				$("#stopSound").live("click", function(){
-					if (Rester.scTrack == null) { return; }
-					alert("got here");
-					Rester.scTrack.stop();
-				});
+		$.ajax({
+			url: Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
+			dataType: Rester.dataType,
+			ifModified: 'true',
+			timeout: Rester.ajaxTimeout,
+			success: function(data) {
+							
+				if (data == null) {
+					data = Rester.getProp("scTrackInfo");
+					if (data == null) {
+						Rester.setStatusMsg("There are currently no tracks available. Please check back later.");
+						return;
+					}
+				} else {
+					Rester.setProp("scTrackInfo", data);
+				}
 				
-		    });
-		
-		// SC.initialize({
-		//     client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
-		//   });
-		// 
-		//   $("#playSound").live("click", function(){
-		// 	
-		//     SC.stream("/tracks/293", function(sound){
-		// 		if (sound == null) { return; }
-		// 		alert("got here");
-		// 		Rester.scTrack = sound;
-		// 		Rester.scTrack.play();
-		// 	});
-		//   });
-		// 
-		// $("#stopSound").live("click", function(){
-		// 	if (Rester.scTrack == null) { return; }
-		// 	alert("got here");
-		// 	Rester.scTrack.stop();
-		// });
-		
-		// var api = $.sc.api(Rester.scClientID, {
-		//     onAuthSuccess: function(user, container) {
-		//       $('<span class="username">Logged in as: <strong>' + user.username + '</strong></a>').prependTo(container);
-		//       console.log('you are SoundCloud user ' + user.username);
-		//     }
-		//   });
-		// 
-		//   // wait for the API to be available
-		//   $(document).bind($.sc.api.events.AuthSuccess, function(event) {
-		//     var user = event.user;
-		//     // call the api
-		//     api.get('/vjdrock/tracks', function(data) {
-		//       console.log('and here are your tracks', data);
-		//       // you can use new jQuery templating for generating the track list
-		//       $('#track').render(data).appendTo("#track-list");
-		//     });
-		//   });
-		// 
-		// $.ajax({
-		// 	url: Rester.proxyURL + Rester.getLocProp('musicURL'),
-		// 	dataType: Rester.dataType,
-		// 	ifModified: 'true',
-		// 	timeout: Rester.ajaxTimeout,
-		// 	success: function(data) {
-		//   		$(Rester.getDataContents(data)).each(function(data) {
-		//     		console.log(data.title);
-		//   		});
-		// 	},
-		// 	error: function() {
-		// 		Rester.setStatusMsg("Songs will be shown when a network connection is available.");
-		// 	}
-		// });
-		// 		
-		// $('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
-		// $('a.sc-player, div.sc-player').scPlayer();
-		// Rester.fixMusicPlayer();
+				data = eval(data);
+				Rester.createTrackList(data);
+				
+			},
+			error: function() {
+				var data = Rester.getProp("scTrackInfo");
+				if (data == null) {
+					Rester.setStatusMsg("Tracklist will be shown when a network connection is available.");
+					return;
+				}
+				data = eval(data);
+				Rester.createTrackList(data);
+			}
+		});
+	},
+	
+	createTrackList: function(data) {
+		var audioTitle = "";
+		var artworkURL = "";
+		var audioURL = "";
+		var newHTML = "";
+
+		for (var i = 0; i < data.length; i++) {
+				audioTitle = data[i].title;
+				artworkURL = data[i].artwork_url;
+				audioURL = data[i].download_url;
+				newHTML += '<li class="audioTrack">' + 
+				'<a href="musicplayer.html" ' + 
+				'onclick=\'' + 
+					'Rester.setProp("audioURL", "' + encodeURIComponent(audioURL) + '");' + 
+					'Rester.setProp("audioTitle", "' + encodeURIComponent(audioTitle) + '");' + 
+					'Rester.setProp("artworkURL", "' + encodeURIComponent(artworkURL) + '");\'>' + 
+				'<img src="' + artworkURL + '"/><div class="trackTitle">' + audioTitle + '</div></a></li>';
+		};
+
+		$('#trackList').html(newHTML);
+		$('#trackList').listview('refresh');
+	},
+	
+	fixMusicPlayer: function() {
+		// $('#audioPlayer').css('width', $(window).width() + "px");
+		// 	$('#artworkImg').css('width', $(window).width() + "px");
+	},
+	
+	loadMusicPlayerPage: function() {
+		// $('#artworkImg').css('background-image', 'url(' + decodeURIComponent(Rester.getProp("artworkURL")) + ')');
+		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
+		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
+		$('#playerWidget').html(
+			'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
+				'?client_id=' + Rester.scClientID + '" controls preload></audio>'
+		);
+		Rester.fixMusicPlayer();
 	}
 };

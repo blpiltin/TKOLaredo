@@ -79,6 +79,8 @@
 .menuItemTitle {
 	font-size: 12pt;
 	font-weight: bold;
+	overflow: hidden;
+	white-space: pre-wrap;
 }
 
 .menuItemPrice {
@@ -96,16 +98,26 @@
 	height: 200px;
 	margin: 10px auto;
 	overflow: hidden; 
+	float: left;
 }
 
 .menuItemDetailsImage img {
 	height: 198px;
 	border: 1px solid red;
 	width: auto;
+	margin-right: 5px;
+}
+
+.menuItemDetailsDescription {
+	margin-top: 7px;
+	margin-left: 0px; /*space around the image*/
+	margin-bottom: 7px;
+	float:left;
 }
 
 .menuItemDetailsPrice {
-	margin-top: 10px;
+	margin-top: 7px;
+	margin-left: 0px;
 	font-weight: bold;
 	color: #900;
 	font-size: 14pt;
@@ -113,9 +125,10 @@
 
 /* Photo gallery */
 .galleryTitle {
-	font-size: 14pt;
+	font-size: 12pt;
 	font-weight: bold;
-	margin-top: 17px;
+	overflow: hidden;
+	white-space: pre-wrap;
 }
 
 .galleryList img {
@@ -133,6 +146,56 @@
 .pictureThumb img {
 	width: 90px;
 	height: auto;
+}
+
+/* Music track list */
+.trackTitle {
+	font-size: 12pt;
+	font-weight: bold;
+	margin-left: 5px;
+	overflow: hidden;
+	white-space: pre-wrap;
+/*	margin-top: 17px;*/
+}
+
+.audioTrack a img {
+	margin-top: 7px;
+	margin-left: 7px;
+	height: 70px;
+	width: auto;
+}
+
+div#musicPlayerPage .ui-content {
+	padding: 0px 0px 0px 0px;
+}
+
+#audioPlayer {
+	height: 100%;
+	width: 100%;
+	text-align: center;
+	position: relative;
+}
+
+#artworkImg {
+	width: 100%;
+	text-align: center;
+	position: relative;
+}
+
+#artworkImg img {
+	height: 50%;
+	margin: auto;
+}
+
+#audioTitle {
+	white-space: pre-wrap;
+	text-align: center;
+}
+
+#playerWidget {
+	width: 100%;
+	float: left;
+	text-align: center;
 }
 
 /* remove text shadow from player text */
