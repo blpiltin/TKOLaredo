@@ -5,19 +5,26 @@
 	position: relative; /* On older OS versions "position" and "z-index" must be defined, */
 	z-index:1; /* it seems that recent webkit is less picky and works anyway. */
 	overflow:hidden;
-	background: #aaa;
 	/* -webkit-border-radius:10px;
 	-moz-border-radius: 10px;
 	-o-border-radius: 10px;
 	border-radius: 10px;*/
 	background:#000000;
+	padding: 0px;
+	margin-top:0px;
+	margin-bottom:0px;
+	margin-left:0px;
+	margin-right:0px;
 }
 
 #scroller {
-	width: 100px;
-	height: 100%;
+	height: 160px;
 	float: left;
-	padding: 0;
+	padding: 0px;
+	margin-top:0px;
+	margin-bottom:0px;
+	margin-left:0px;
+	margin-right:0px;
 	overflow:hidden;
 }
 
@@ -25,12 +32,17 @@
 	list-style: none;
 	display: block;
 	float: left;
-	width: 100%;
+	padding: 0px;
+	margin-top:0px;
+	margin-bottom:0px;
+	margin-left:0px;
+	margin-right:0px;
+/*	width: 100%;
 	height: 100%;
-	padding: 0;
-	margin: 0;
+	padding: 0px;
+	margin-top: 0px;
 	text-align: left;
-	overflow:hidden;
+	overflow:hidden;*/
 }
 
 #scroller li {
@@ -40,18 +52,29 @@
 	box-sizing: border-box;
 	display: block;
 	float: left;
-	width: 120px;
-	height: 160px;
+	width: 100px;
+/*	height: 160px;
 	text-align: center;
 	font-family: georgia;
 	font-size: 18px;
 	line-height: 140%;
+	margin-top:0px; */
 	overflow:hidden;
+	padding: 0px;
+	margin-top:0px;
+	margin-bottom:0px;
+	margin-left:0px;
+	margin-right:0px;
 }
 
 #scroller li img {
 	height: 160px;
 	overflow:hidden;
+	padding: 0px;
+	margin-top:0px;
+	margin-bottom:0px;
+	margin-left:0px;
+	margin-right:0px;
 }
 #nav {
 	width: 300px;

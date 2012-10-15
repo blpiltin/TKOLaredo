@@ -61,6 +61,8 @@ var Rester = {
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
 	
+	// The width in pixels for each scroller image
+	scrollWidth: 120,
 	// The maximum number of photos on the front page scroll
 	MAX_SCROLL: 12,
 	// The current number of photos in the front page scroll
@@ -68,6 +70,11 @@ var Rester = {
 	
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
+	
+	// SoundCloud client id
+	scClientID: '1ea1ab57eb6ef387a5c5b2d02484da4d',
+	// The currently playing scTrack
+	scTrack: null,
 	
 	/**
 	 * Utility function for debugging. Use:
@@ -100,9 +107,12 @@ var Rester = {
 	 * Change the case of a string to title case.
 	 */
 	toTitleCase: function(str) {
-		return str.replace(/\w\S*/g, function(txt) {
-			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-		});
+		if (str == str.toLowerCase()) {
+			return str.replace(/\w\S*/g, function(txt) {
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		} 
+		return str;
 	},
 	
 	/**
@@ -474,10 +484,15 @@ var Rester = {
 	},
 	
 	fixScroller: function() {
+		var scrollMult = $(window).height() / 480.0;
+		// var scrollStr = $('#scroller li').css('width');
+		// var scrollWidth = scrollStr.substring(0, scrollStr.length - 2) * scrollMult;
+		var scrollWidth = Rester.scrollWidth * scrollMult;
+		$('#scroller li').css("width", scrollWidth + 'px');
 		$('#wrapper').css('height', $(window).height() / 3 + 'px');
+		$('#scroller').css('height', $(window).height() / 3 + 'px');
+		$('#scroller li img').css('height', $(window).height() / 3 + 'px');
 		$('#wrapper').css("width", $(window).width() + 'px');
-		var scrollStr = $('#scroller li').css('width');
-		var scrollWidth = scrollStr.substring(0, scrollStr.length - 2);
 		$('#scroller').css("width", scrollWidth * Rester.scrollSize);
 	},
 	
@@ -541,7 +556,7 @@ var Rester = {
 					newHTML += '<li class="menuCategory">' + 
 					'<a href="menucategory.html" ' + 
 					'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
-					'<img src="' + images[i] + '"/>' + Rester.toTitleCase(val) + '</a></li>';
+					'<img src="' + images[i] + '"/><div class="menuCategoryTitle">' + Rester.toTitleCase(val) + '</div></a></li>';
 				});
 				$('#menuCategories').html(newHTML);
 				$('#menuCategories').listview('refresh');
@@ -614,6 +629,7 @@ var Rester = {
 			success: function(data) {
 
 				var title = "";
+				var alt = "";
 				var attributes = "";
 				var category = "";
 				var description = "";
@@ -622,17 +638,18 @@ var Rester = {
 
 				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
 					title = $(this).find('img').attr('title');
+					alt = $(this).find('img').attr('alt');
 					if (title === menuItem) {
 						attributes = $(this).find('a').attr('title');
 						attributes = attributes.split(';');
 						category = attributes[0];
 						description = attributes[1];
 						price = '$' + attributes[2];
-						src = $(this).find('img').attr('src');
+						src = $(this).find('a').attr('href');
 						$('#menuItem').html('<div class="menuItemDetails">' + 
 							'<div class="menuItemDetailsTitle">' + Rester.toTitleCase(menuItem) + '</div>' + 
-							'<div class="menuItemDetailsImage">' + $(this).find('img').outerHTML() + '</div>' +
-							//'<img href="' + src + '"></img><br/>' + 
+							'<div class="menuItemDetailsImage">' +
+							'<img src="' + src + '" title="' + title + '" alt="' + alt +'"></img></div>' + 
 							'<div class="menuItemDetailsDescription">' + description + '</div>' + 
 							'<div class="menuItemDetailsPrice">Price: ' + price + '</div></div>');
 					}
@@ -667,8 +684,8 @@ var Rester = {
 					$('#galleryList').append('<li class="galleryList">' + 
 						'<a href="picturesgallery.html" ' + 
 						'onclick=\'Rester.setProp("galleryURL", "' + $(this).find('a').attr('href') + '");\'>' +
-						'<img src="' + $(this).find('img').attr('src') + '"/>' + 
-						Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</a></li>');
+						'<img src="' + $(this).find('img').attr('src') + '"/><div class="galleryTitle">' + 
+						Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</div></a></li>');
 				});
 				$('#galleryList').listview('refresh');
 			},
@@ -695,7 +712,7 @@ var Rester = {
 				var style = "";
 
 				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box').each(function(i) {
-					text += '<div class="pictureThumb" style="float:left;margin-left:5px">' + 
+					text += '<div class="pictureThumb">' + 
 						'<a href="' + $(this).find('a').attr('href') + '" rel="external">' + 
 						'<img src="' + $(this).find('img').attr('src') + '" alt="' + $(this).find('img').attr('alt') + '"/>' + '</a></div>';
 				});
@@ -724,9 +741,90 @@ var Rester = {
 	loadMusicPage: function() {
 		
 		console.log("Rester.loadMusicPage()", "Loading music using SC-PLayer.");
+		
+		var url = "http://api.soundcloud.com/users/vjdrock/tracks.json?client_id=1ea1ab57eb6ef387a5c5b2d02484da4d";
+		
+			SC.initialize({
+			    client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
+			  });
+			
+		var track_url = 'http://api.soundcloud.com/tracks/62759488';
+		    SC.get('/resolve', {
+		        url : track_url
+		    }, function(track) {
+
+		        $("#playSound").live("click", function() {
+		            SC.stream("/tracks/" + track.id, function(sound) {
+		                if (sound == null) { return; }
+						alert("got here");
+						Rester.scTrack = sound;
+						Rester.scTrack.play();
+		            });
+		        });
+		
+				$("#stopSound").live("click", function(){
+					if (Rester.scTrack == null) { return; }
+					alert("got here");
+					Rester.scTrack.stop();
+				});
 				
-		$('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
-		$('a.sc-player, div.sc-player').scPlayer();
-		Rester.fixMusicPlayer();
+		    });
+		
+		// SC.initialize({
+		//     client_id: "1ea1ab57eb6ef387a5c5b2d02484da4d"
+		//   });
+		// 
+		//   $("#playSound").live("click", function(){
+		// 	
+		//     SC.stream("/tracks/293", function(sound){
+		// 		if (sound == null) { return; }
+		// 		alert("got here");
+		// 		Rester.scTrack = sound;
+		// 		Rester.scTrack.play();
+		// 	});
+		//   });
+		// 
+		// $("#stopSound").live("click", function(){
+		// 	if (Rester.scTrack == null) { return; }
+		// 	alert("got here");
+		// 	Rester.scTrack.stop();
+		// });
+		
+		// var api = $.sc.api(Rester.scClientID, {
+		//     onAuthSuccess: function(user, container) {
+		//       $('<span class="username">Logged in as: <strong>' + user.username + '</strong></a>').prependTo(container);
+		//       console.log('you are SoundCloud user ' + user.username);
+		//     }
+		//   });
+		// 
+		//   // wait for the API to be available
+		//   $(document).bind($.sc.api.events.AuthSuccess, function(event) {
+		//     var user = event.user;
+		//     // call the api
+		//     api.get('/vjdrock/tracks', function(data) {
+		//       console.log('and here are your tracks', data);
+		//       // you can use new jQuery templating for generating the track list
+		//       $('#track').render(data).appendTo("#track-list");
+		//     });
+		//   });
+		// 
+		// $.ajax({
+		// 	url: Rester.proxyURL + Rester.getLocProp('musicURL'),
+		// 	dataType: Rester.dataType,
+		// 	ifModified: 'true',
+		// 	timeout: Rester.ajaxTimeout,
+		// 	success: function(data) {
+		//   		$(Rester.getDataContents(data)).each(function(data) {
+		//     		console.log(data.title);
+		//   		});
+		// 	},
+		// 	error: function() {
+		// 		Rester.setStatusMsg("Songs will be shown when a network connection is available.");
+		// 	}
+		// });
+		// 		
+		// $('a.sc-player, div.sc-player').attr('href', Rester.getLocProp('musicURL'));
+		// $('a.sc-player, div.sc-player').scPlayer();
+		// Rester.fixMusicPlayer();
 	}
 };

@@ -15,7 +15,12 @@
 		<div data-role="content" id="music-background">	
 			
 			<div class="statusMsg"></div>	<!-- Use this to display ajax loading status. -->
+			<input type="button" href="#" id="playSound" class="big button" value="Play" />
+			<input type="button" href="#" id="stopSound" class="big button" value="Stop" />
 			
+			<script id="track" type="text/html">
+		      <li data-track-id="${id}">${$i}) <a href="${permalink_url}">${title}</a> <span>${duration}</span> <img src="${waveform_url}" width="250" height="18"></li>
+		    </script>
 			<div id="playerWidget">
 				<a href="http://soundcloud.com/hayashi-1/sets/hayashi-demo/" class="sc-player">Loading music player...</a>
 			</div>
