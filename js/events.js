@@ -39,58 +39,89 @@
 		
 		var wall = this;
 		
-		$.when($.getJSON(graphUSER),$.getJSON(graphPOSTS)).done(function(user,posts){
+		var exp = Rester.getProp("eventsExpiration"+Rester.getLocation());
+		var today = new Date();
+		
+		if (exp == null || today >= exp) {
+		
+			$.when($.getJSON(graphUSER),$.getJSON(graphPOSTS)).done(function(user,posts){
 			
-			// user[0] contains information about the user (name and picture);
-			// posts[0].data is an array with wall posts;
+				// user[0] contains information about the user (name and picture);
+				// posts[0].data is an array with wall posts;
 			
-			var fb = {
-				user : user[0],
-				posts : []
-			};
+				var fb = {
+					user : user[0],
+					posts : []
+				};
 
-			$.each(posts[0].data,function(){
+				$.each(posts[0].data,function(){
 				
-				// We only show links and statuses from the posts feed:
-				if((this.type != 'link' && this.type!='status') || !this.message){
-					return true;
+					// We only show links and statuses from the posts feed:
+					if((this.type != 'link' && this.type!='status') || !this.message){
+						return true;
+					}
+
+					// Copying the user avatar to each post, so it is
+					// easier to generate the templates:
+					// if (fb.user.picture === "") {
+					// 				this.from.picture = Rester.getLocProp('fbPicture');
+					// 			} else {
+					// 				this.from.picture = fb.user.picture;
+					// 			}
+					// 			
+					// 			console.debug('wallscript()', 'picture=' + this.from.picture);
+					this.from.picture = Rester.getLocProp('fbPicture');
+				
+					// Converting the created_time (a UNIX timestamp) to
+					// a relative time offset (e.g. 5 minutes ago):
+					this.created_time = relativeTime(this.created_time*1000);
+				
+					// Converting URL strings to actual hyperlinks:
+					this.message = urlHyperlinks(this.message);
+
+					fb.posts.push(this);
+				});
+
+				if (fb.posts.length == 0) {
+					$('#wall').html('<h3>There are no events to display.</h3>');
+					return this;
 				}
-
-				// Copying the user avatar to each post, so it is
-				// easier to generate the templates:
-				// if (fb.user.picture === "") {
-				// 				this.from.picture = Rester.getLocProp('fbPicture');
-				// 			} else {
-				// 				this.from.picture = fb.user.picture;
-				// 			}
-				// 			
-				// 			console.debug('wallscript()', 'picture=' + this.from.picture);
-				this.from.picture = Rester.getLocProp('fbPicture');
-				
-				// Converting the created_time (a UNIX timestamp) to
-				// a relative time offset (e.g. 5 minutes ago):
-				this.created_time = relativeTime(this.created_time*1000);
-				
-				// Converting URL strings to actual hyperlinks:
-				this.message = urlHyperlinks(this.message);
-
-				fb.posts.push(this);
+			
+				// Rendering the templates:
+				$('#headingTpl').tmpl(fb.user).appendTo(wall);
+			
+				// Creating an unordered list for the posts:
+				var ul = $('<ul>').appendTo(wall);
+			
+				// Generating the feed template and appending:
+				$('#feedTpl').tmpl(fb.posts).appendTo(ul);
+			
+				var expiration=new Date();
+				expiration.setDate(expiration.getHours()+12);
+				Rester.setProp("eventsExpiration"+Rester.getLocation(), expiration);
+				Rester.setProp("events"+Rester.getLocation(), fb);
+			
 			});
-
+			
+		} else {
+			
+			var fb = Rester.getProp("events"+Rester.getLocation());
+			
 			if (fb.posts.length == 0) {
 				$('#wall').html('<h3>There are no events to display.</h3>');
 				return this;
 			}
-			
+		
 			// Rendering the templates:
 			$('#headingTpl').tmpl(fb.user).appendTo(wall);
-			
+		
 			// Creating an unordered list for the posts:
 			var ul = $('<ul>').appendTo(wall);
-			
+		
 			// Generating the feed template and appending:
 			$('#feedTpl').tmpl(fb.posts).appendTo(ul);
-		});
+			
+		}
 		
 		return this;
 

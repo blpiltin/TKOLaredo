@@ -442,46 +442,57 @@ var Rester = {
 		console.log("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
 							
 		Rester.createMap();
+		
+		var exp = Rester.getProp("scrollExpiration"+Rester.getLocation());
+		var today = new Date();
+		
+		if (exp == null || today >= exp) {
+			$.ajax({
+			
+				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
+				dataType: Rester.dataType,
+				timeout: Rester.ajaxTimeout,
+				ifModified: 'true',
+			
+				success: function(data) {
+				
+					var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
+					galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
+				
+					$.ajax({
+						url: Rester.proxyURL + galleryURL,
+						dataType: Rester.dataType,
+						success: function(data) {
 						
-		$.ajax({
-			
-			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-			dataType: Rester.dataType,
-			timeout: Rester.ajaxTimeout,
-			ifModified: 'true',
-			
-			success: function(data) {
-				
-				temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
-				galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
-				
-				$.ajax({
-					url: Rester.proxyURL + galleryURL,
-					dataType: Rester.dataType,
-					success: function(data) {
-						Rester.setProp("scrollerList", data);
-						Rester.createScroller(data);
-					},
-					error: function() {
-						var data = Rester.getProp("scrollerList");
-						if (data == null) {
-							Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-						} else {
+							var expiration=new Date();
+							expiration.setDate(expiration.getDate()+1);
+							Rester.setProp("scroll"+Rester.getLocation(), data);
+							Rester.setProp("scrollExpiration"+Rester.getLocation(), expiration);
 							Rester.createScroller(data);
+						},
+						error: function() {
+							var data = Rester.getProp("scroll"+Rester.getLocation());
+							if (data == null) {
+								Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+							} else {
+								Rester.createScroller(data);
+							}
 						}
-					}
-				});
-			},
+					});
+				},
 			
-			error: function() {
-				var data = Rester.getProp("scrollerList");
-				if (data == null) {
-					Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-				} else {
-					Rester.createScroller(data);
+				error: function() {
+					var data = Rester.getProp("scroll"+Rester.getLocation());
+					if (data == null) {
+						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+					} else {
+						Rester.createScroller(data);
+					}
 				}
-			}
-		});
+			});
+		} else {
+			Rester.createScroller(Rester.getProp("scroll"+Rester.getLocation()));
+		}
 	},
 	
 	createScroller: function(data) {
@@ -538,11 +549,14 @@ var Rester = {
 	},
 	
 	createMap: function() {
-		if (!googleMaps) { return; }
+		if (!googleMaps) { 
+			return; 
+		}
 		$('#map_canvas').gmap('destroy');
 		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
 		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
 		$('#map_canvas').gmap('addMarker', {'position': loc });
+		// Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
     },
 	
 	loadSharePage: function() {
@@ -552,35 +566,45 @@ var Rester = {
 	loadMenuPage: function() {
 		console.log("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
-		$.ajax({
-			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
+		var exp = Rester.getProp("menuExpiration"+Rester.getLocation());
+		var today = new Date();
 		
-				if (data == null) {
-					data = Rester.getProp("menu");
+		if (exp == null || today >= exp) {
+			$.ajax({
+				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+		
 					if (data == null) {
-						Rester.setStatusMsg("There are currently no menu items available. Please check back later.");
+						data = Rester.getProp("menu"+Rester.getLocation());
+						if (data == null) {
+							Rester.setStatusMsg("There are currently no menu items available. Please check back later.");
+							return;
+						}
+					} else {
+						var expiration=new Date();
+						expiration.setDate(expiration.getDate()+1);
+						Rester.setProp("menuExpiration"+Rester.getLocation(), expiration);
+						Rester.setProp("menu"+Rester.getLocation(), data);
+					}
+				
+					Rester.createMenu(data);
+				},
+				error: function() {
+				
+					var data = Rester.getProp("menu"+Rester.getLocation());
+					if (data == null) {
+						Rester.setStatusMsg("Menu will be shown when a network connection is available.");
 						return;
 					}
-				} else {
-					Rester.setProp("menu", data);
+					Rester.createMenu(data);
 				}
-				
-				Rester.createMenu(data);
-			},
-			error: function() {
-				
-				var data = Rester.getProp("menu");
-				if (data == null) {
-					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-					return;
-				}
-				Rester.createMenu(data);
-			}
-		});
+			});
+		} else {
+			Rester.createMenu(Rester.getProp("menu"+Rester.getLocation()));
+		}
 	},
 
 	createMenu: function(data) {
@@ -616,7 +640,7 @@ var Rester = {
 	},
 	
 	loadMenuCategoryPage: function() {	
-		var data = Rester.getProp("menu");
+		var data = Rester.getProp("menu"+Rester.getLocation());
 		if (data == null) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
@@ -624,7 +648,7 @@ var Rester = {
 				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
 				success: function(data) {
-					Rester.setProp("menu", data);
+					Rester.setProp("menu"+Rester.getLocation(), data);
 					Rester.createMenuCategories(data);
 				},
 				error: function() {
@@ -666,7 +690,7 @@ var Rester = {
 
 	loadMenuItemPage: function() {
 		
-		var data = Rester.getProp("menu");
+		var data = Rester.getProp("menu"+Rester.getLocation());
 		if (data == null) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
@@ -674,7 +698,7 @@ var Rester = {
 				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
 				success: function(data) {
-					Rester.setProp("menu", data);
+					Rester.setProp("menu"+Rester.getLocation(), data);
 					Rester.createMenuItem(data);
 				},
 				error: function() {
@@ -731,100 +755,167 @@ var Rester = {
 		console.log("Rester.loadPicturesPage()", "Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
-		$.ajax({
-			url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-				$($(Rester.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
-					$('#galleryList').append('<li class="galleryList">' + 
-						'<a href="picturesgallery.html" ' + 
-						'onclick=\'Rester.setProp("galleryURL", "' + $(this).find('a').attr('href') + '");\'>' +
-						'<img src="' + $(this).find('img').attr('src') + '"/><div class="galleryTitle">' + 
-						Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</div></a></li>');
-				});
-				$('#galleryList').listview('refresh');
-			},
-			error: function() {
-				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-			}
-		});
+		var exp = Rester.getProp("picturesExpiration"+Rester.getLocation());
+		var today = new Date();
+		
+		if (exp == null || today >= exp) {
+			$.ajax({
+				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+					if (data == null) {
+						data = Rester.getProp("pictures"+Rester.getLocation());
+						if (data == null) {
+							Rester.setStatusMsg("There are currently no photo galleries available. Please check back later.");
+							return;
+						}
+					} else {
+						var expiration=new Date();
+						expiration.setDate(expiration.getDate()+1);
+						Rester.setProp("picturesExpiration"+Rester.getLocation(), expiration);
+						Rester.setProp("pictures"+Rester.getLocation(), data);
+					}
+					Rester.createGalleryList(data);
+				},
+				error: function() {
+					var data = Rester.getProp("pictures"+Rester.getLocation());
+					if (data == null) {
+						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+						return;
+					}
+					Rester.createGalleryList(data);
+				}
+			});
+		} else {
+			Rester.createGalleryList(Rester.getProp("pictures"+Rester.getLocation()));
+		}
 	},
 
+	createGalleryList: function(data) {
+		$($(Rester.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
+			$('#galleryList').append('<li class="galleryList">' + 
+				'<a href="picturesgallery.html" ' + 
+				'onclick=\'Rester.setProp("galleryURL", "' + $(this).find('a').attr('href') + '");\'>' +
+				'<img src="' + $(this).find('img').attr('src') + '"/><div class="galleryTitle">' + 
+				Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</div></a></li>');
+		});
+		$('#galleryList').listview('refresh');
+	},
+	
 	loadPicturesGalleryPage: function(e) {
 
 		var galleryURL = Rester.getProp("galleryURL");
 
 		console.log("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
 				
-		$.ajax({
-			url: Rester.proxyURL + galleryURL,
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-
-				var text = "";
-				var style = "";
-
-				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box').each(function(i) {
-					text += '<div class="pictureThumb">' + 
-						'<a href="' + $(this).find('a').attr('href') + '" rel="external">' + 
-						'<img src="' + $(this).find('img').attr('src') + '" alt="' + $(this).find('img').attr('alt') + '"/>' + '</a></div>';
-				});
-
-				if (text !== "") {
-					$('#Gallery').html(text);
-					window.photoSwipe = $("#Gallery a").photoSwipe({
-						'jQueryMobile': true,
-						'backButtonHideEnabled': false,
-						'enableMouseWheel': false,
-						'enableKeyboard': false
-					});
+		var exp = Rester.getProp(galleryURL+"Expiration");
+		var today = new Date();
+		
+		if (exp == null || today >= exp) {
+		
+			$.ajax({
+				url: Rester.proxyURL + galleryURL,
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+					if (data == null) {
+						data = Rester.getProp(galleryURL);
+						if (data == null) {
+							Rester.setStatusMsg("There are currently no photos available. Please check back later.");
+							return;
+						}
+					} else {
+						var expiration=new Date();
+						expiration.setDate(expiration.getDate()+1);
+						Rester.setProp(galleryURL+"Expiration", expiration);
+						Rester.setProp(galleryURL, data);
+					}
+					Rester.createPicturesGallery(data);
+				},
+				error: function() {
+					var data = Rester.getProp(galleryURL);
+					if (data == null) {
+						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+						return;
+					}
+					Rester.createPicturesGallery(data);
 				}
-			},
-			error: function() {
-				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-			}
-		});
+			});
+		} else {
+			Rester.createPicturesGallery(Rester.getProp(galleryURL));
+		}
 	}, 
+	
+	createPicturesGallery: function(data) {
+		var text = "";
+		var style = "";
+
+		$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box').each(function(i) {
+			text += '<div class="pictureThumb">' + 
+				'<a href="' + $(this).find('a').attr('href') + '" rel="external">' + 
+				'<img src="' + $(this).find('img').attr('src') + '" alt="' + $(this).find('img').attr('alt') + '"/>' + '</a></div>';
+		});
+
+		if (text !== "") {
+			$('#Gallery').html(text);
+			window.photoSwipe = $("#Gallery a").photoSwipe({
+				'jQueryMobile': true,
+				'backButtonHideEnabled': false,
+				'enableMouseWheel': false,
+				'enableKeyboard': false
+			});
+		}
+	},
 	
 	loadMusicPage: function() {
 		
 		console.log("Rester.loadMusicPage()", "Loading music using SC-PLayer.");
+	
+		var exp = Rester.getProp("musicExpiration"+Rester.getLocation());
+		var today = new Date();
 		
-		$.ajax({
-			url: Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-							
-				if (data == null) {
-					data = Rester.getProp("scTrackInfo");
+		if (exp == null || today >= exp) {
+					
+			$.ajax({
+				url: Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+					
 					if (data == null) {
-						Rester.setStatusMsg("There are currently no tracks available. Please check back later.");
+						data = Rester.getProp("music"+Rester.getLocation());
+						if (data == null) {
+							Rester.setStatusMsg("There are currently no tracks available. Please check back later.");
+							return;
+						}
+					} else {
+						var expiration=new Date();
+						expiration.setDate(expiration.getDate()+1);
+						Rester.setProp("musicExpiration"+Rester.getLocation(), expiration);
+						Rester.setProp("music"+Rester.getLocation(), data);
+					}
+				
+					data = eval(data);
+					Rester.createTrackList(data);
+				
+				},
+				error: function() {
+					var data = Rester.getProp("music"+Rester.getLocation());
+					if (data == null) {
+						Rester.setStatusMsg("Tracklist will be shown when a network connection is available.");
 						return;
 					}
-				} else {
-					Rester.setProp("scTrackInfo", data);
+					data = eval(data);
+					Rester.createTrackList(data);
 				}
-				
-				data = eval(data);
-				Rester.createTrackList(data);
-				
-			},
-			error: function() {
-				var data = Rester.getProp("scTrackInfo");
-				if (data == null) {
-					Rester.setStatusMsg("Tracklist will be shown when a network connection is available.");
-					return;
-				}
-				data = eval(data);
-				Rester.createTrackList(data);
-			}
-		});
+			});
+		} else {
+			Rester.createTrackList(eval(Rester.getProp("music"+Rester.getLocation())));
+		}
 	},
 	
 	createTrackList: function(data) {
