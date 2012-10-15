@@ -459,41 +459,55 @@ var Rester = {
 					url: Rester.proxyURL + galleryURL,
 					dataType: Rester.dataType,
 					success: function(data) {
-		
-						var style = "";
-						var text = "";
-						var indicator = '<li class="active">1</li>';
-						var images = $(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
-						Rester.scrollSize = 0;
-		
-						for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
-							Rester.scrollSize++;
-							text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
-								'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
-							indicator += ((i === 0) ? '' : '<li>' + (i + 1) + '</li>');
-						}
-		
-						if (text !== '') {
-							$('#thelist').html(text);
-							Rester.fixScroller();
-							window.myScroll = new iScroll('wrapper', {
-								snap: false,
-								momentum: true,
-								hScrollbar: false
-							});
-						}
+						Rester.setProp("scrollerList", data);
+						Rester.createScroller(data);
 					},
 					error: function() {
-						console.log("loadHomePage()", 
-							"An error occured loading the pictures. Please be sure you are connected to the internet.");
+						var data = Rester.getProp("scrollerList");
+						if (data == null) {
+							Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+						} else {
+							Rester.createScroller(data);
+						}
 					}
 				});
 			},
+			
 			error: function() {
-				console.log("loadHomePage()", 
-					"An error occured loading the pictures. Please be sure you are connected to the internet.");
+				var data = Rester.getProp("scrollerList");
+				if (data == null) {
+					Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+				} else {
+					Rester.createScroller(data);
+				}
 			}
 		});
+	},
+	
+	createScroller: function(data) {
+		
+		var style = "";
+		var text = "";
+		var indicator = '<li class="active">1</li>';
+		var images = $(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
+		Rester.scrollSize = 0;
+
+		for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
+			Rester.scrollSize++;
+			text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
+				'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
+			indicator += ((i === 0) ? '' : '<li>' + (i + 1) + '</li>');
+		}
+
+		if (text !== '') {
+			$('#thelist').html(text);
+			Rester.fixScroller();
+			window.myScroll = new iScroll('wrapper', {
+				snap: false,
+				momentum: true,
+				hScrollbar: false
+			});
+		}
 	},
 	
 	fixScroller: function() {
@@ -601,104 +615,109 @@ var Rester = {
 		$('#menuCategories').listview('refresh');
 	},
 	
-	loadMenuCategoryPage: function() {
-
-		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
-		
-		console.log(
-			"Rester.loadMenuCategoryPage()", 
-			"Loading menu category " + menuCategory + " from " + 
-			Rester.proxyURL + Rester.getLocProp('menuURL'));
-		
-		$.ajax({
-			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-
-				var description = "";
-				var category = "";
-				var item = "";
-				var image = "";
-				var price = "";
-				var newHTML = "";
-									
-				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
-					description = $(this).find('a').attr('title');
-					category = description.split(';')[0];
-					price = description.split(';')[2];
-					if (category === menuCategory) {
-						item = $(this).find('img').attr('title');
-						image = $(this).find('img').attr('src');
-						newHTML += '<li class="menuItem">' +
-							'<a href="menuitem.html" ' + 
-							'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
-							'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + Rester.toTitleCase(item) + '</div>' + 
-							'<div class="menuItemPrice">$' + price + '</div></a></li>';
-					}
-				});
-				$('#menuItems').html(newHTML);
-				$('#menuItems').listview('refresh');
-			}, 
-			error: function() {
-				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-			}
-		});
+	loadMenuCategoryPage: function() {	
+		var data = Rester.getProp("menu");
+		if (data == null) {
+			$.ajax({
+				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+					Rester.setProp("menu", data);
+					Rester.createMenuCategories(data);
+				},
+				error: function() {
+					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+				}
+			});
+		} else {
+			Rester.createMenuCategories(data);
+		}
 	},
 	
 	createMenuCategories: function(data) {
-		
+		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
+
+		var description = "";
+		var category = "";
+		var item = "";
+		var image = "";
+		var price = "";
+		var newHTML = "";
+
+		$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+			description = $(this).find('a').attr('title');
+			category = description.split(';')[0];
+			price = description.split(';')[2];
+			if (category === menuCategory) {
+				item = $(this).find('img').attr('title');
+				image = $(this).find('img').attr('src');
+				newHTML += '<li class="menuItem">' +
+					'<a href="menuitem.html" ' + 
+					'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
+					'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + Rester.toTitleCase(item) + '</div>' + 
+					'<div class="menuItemPrice">$' + price + '</div></a></li>';
+			}
+		});
+		$('#menuItems').html(newHTML);
+		$('#menuItems').listview('refresh');
 	},
 
 	loadMenuItemPage: function() {
 		
-		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
-
-		console.log(
-			"Rester.loadMenuItemPage()", 
-			"Loading menu item " + menuItem + " from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
-		
-		$.ajax({
-			url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-			dataType: Rester.dataType,
-			ifModified: 'true',
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-
-				var title = "";
-				var alt = "";
-				var attributes = "";
-				var category = "";
-				var description = "";
-				var price = "";
-				var src = "";
-
-				$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
-					title = $(this).find('img').attr('title');
-					alt = $(this).find('img').attr('alt');
-					if (title === menuItem) {
-						attributes = $(this).find('a').attr('title');
-						attributes = attributes.split(';');
-						category = attributes[0];
-						description = attributes[1];
-						price = '$' + attributes[2];
-						src = $(this).find('a').attr('href');
-						$('#menuItem').html('<div class="menuItemDetails">' + 
-							'<div class="menuItemDetailsTitle">' + Rester.toTitleCase(menuItem) + '</div>' + 
-							'<div class="menuItemDetailsImage">' +
-							'<img src="' + src + '" title="' + title + '" alt="' + alt +'"></img></div>' + 
-							'<div class="menuItemDetailsDescription">' + description + '</div>' + 
-							'<div class="menuItemDetailsPrice">Price: ' + price + '</div></div>');
-					}
-				});
-			}, 
-			error: function() {
-				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-			}
-		});
+		var data = Rester.getProp("menu");
+		if (data == null) {
+			$.ajax({
+				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
+				dataType: Rester.dataType,
+				ifModified: 'true',
+				timeout: Rester.ajaxTimeout,
+				success: function(data) {
+					Rester.setProp("menu", data);
+					Rester.createMenuItem(data);
+				},
+				error: function() {
+					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+				}
+			});
+		} else {
+			Rester.createMenuItem(data);
+		}
 	},
 
+	createMenuItem: function(data) {
+		
+		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
+		
+		var title = "";
+		var alt = "";
+		var attributes = "";
+		var category = "";
+		var description = "";
+		var price = "";
+		var src = "";
+
+		$(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail').each(function(i) {
+			title = $(this).find('img').attr('title');
+			alt = $(this).find('img').attr('alt');
+			if (title === menuItem) {
+				attributes = $(this).find('a').attr('title');
+				attributes = attributes.split(';');
+				category = attributes[0];
+				description = attributes[1];
+				price = '$' + attributes[2];
+				src = $(this).find('a').attr('href');
+				$('#menuItem').html('<div class="menuItemDetails">' + 
+					'<div class="menuItemDetailsTitle">' + Rester.toTitleCase(menuItem) + '</div>' + 
+					'<div class="menuItemDetailsImage">' +
+					'<img src="' + src + '" title="' + title + '" alt="' + alt +'"></img></div>' + 
+					'<div class="menuItemDetailsDescription">' + description + '</div>' + 
+					'<div class="menuItemDetailsPrice">Price: ' + price + '</div></div>');
+			}
+		});
+	}, 
+	
 	loadEventsPage: function() {
 		console.log("Rester.loadEventsPage()", "Loading events.");
 		
