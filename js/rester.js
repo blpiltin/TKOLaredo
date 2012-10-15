@@ -194,7 +194,6 @@ var Rester = {
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
-
 			} catch (x) {
 				alert(x.message);
 			}
@@ -304,6 +303,9 @@ var Rester = {
 		$('#musicPlayerPage').live('pageshow', function(e) {
 			try {
 				Rester.loadMusicPlayerPage();
+				audiojs.events.ready(function() {
+					var as = audiojs.createAll();
+				});
 			} catch (x) {
 				$.mobile.changePage("index.html");
 				alert(x.message);
@@ -922,8 +924,8 @@ var Rester = {
 		var audioTitle = "";
 		var artworkURL = "";
 		var audioURL = "";
+		var avatarURL = "";
 		var newHTML = "";
-
 		for (var i = 0; i < data.length; i++) {
 				audioTitle = data[i].title;
 				artworkURL = data[i].artwork_url;
@@ -936,7 +938,7 @@ var Rester = {
 					'Rester.setProp("artworkURL", "' + encodeURIComponent(artworkURL) + '");\'>' + 
 				'<img src="' + artworkURL + '"/><div class="trackTitle">' + audioTitle + '</div></a></li>';
 		};
-
+		// $('#avatar').html('<img src="'+data[0].user.avatar_url+'"></img>'+data[0].user.username);
 		$('#trackList').html(newHTML);
 		$('#trackList').listview('refresh');
 	},
@@ -952,7 +954,7 @@ var Rester = {
 		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
 		$('#playerWidget').html(
 			'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
-				'?client_id=' + Rester.scClientID + '" controls preload></audio>'
+				'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
 		);
 		Rester.fixMusicPlayer();
 	}

@@ -190,12 +190,14 @@ div#musicPlayerPage .ui-content {
 #audioTitle {
 	white-space: pre-wrap;
 	text-align: center;
+	margin-top: 5px;
 }
 
 #playerWidget {
 	width: 100%;
 	float: left;
 	text-align: center;
+	margin-top: 5px;
 }
 
 /* remove text shadow from player text */
