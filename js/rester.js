@@ -77,18 +77,8 @@ var Rester = {
 	// The currently playing scTrack
 	scTrack: null,
 	
-	/**
-	 * Utility function for debugging. Use:
-	 * console.log("MyClass.someFunction()", "This is my output message");
-	 */
-	debug: function(functionName, message) {
-		if (console.log !== undefined) {
-			console.log(functionName + " :: " + message);
-		}
-	},
-	
 	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
-		console.log("Rester.db", "Database created succesfully. Using DOM adapter.");
+		console.log("Rester.db :: Database created succesfully. Using DOM adapter.");
 	}),
 	
 	setProp: function(id, value) {
@@ -141,6 +131,9 @@ var Rester = {
 	
 	// Rester Constructor
 	initialize: function() {
+		if (!Rester.DEBUG) { 
+			console.log = function() {} 
+		}
 		Rester.proxyTest();
 		Rester.bindEvents();
 	},
@@ -151,7 +144,7 @@ var Rester = {
 	// `load`, `deviceready`, `offline`, and `online`.
 	bindEvents: function() {
 		
-		console.log("Rester.bindEvents()", "Binding events... ");
+		console.log("Rester.bindEvents() :: Binding events... ");
 		
 		document.addEventListener('deviceready', Rester.onDeviceReady, false);
 		
@@ -166,30 +159,11 @@ var Rester = {
 			$.mobile.transitionFallbacks.slideout = "none";
 			$.mobile.loadingMessageTheme = 'a';
 			$.mobile.loadingMessageTextVisible = true;
-			// $.mobile.phonegapNavigationEnabled = true;
-			
-			// $.mobile.page.prototype.options.domCache = true;
-			
-			// // This allows jQuery to access the cached data for ajax failures.
-			// $.ajaxPrefilter( function(options, originalOptions, jqXHR) {
-			// 		if ( applicationCache &&
-			// 			 applicationCache.status != applicationCache.UNCACHED &&
-			// 			 applicationCache.status != applicationCache.OBSOLETE ) {
-			// 			 // the important bit
-			// 			 options.isLocal = true;
-			// 		}
-			// 	});
 		});
-		
-		// $(document).bind("pagebeforechange", function( event, data ) {
-		//            $.mobile.pageData = (data && data.options && data.options.pageData)
-		//                                   ? data.options.pageData
-		//                                   : null;
-		//         });
 
 		$(document).delegate("#homePage", "pageinit", function(e) {
 			try {
-								
+				console.log("#homePage.pageinit :: Initializing...");
 				Rester.initializeLocation();
 				Rester.setHeaderImage();
 				Rester.setTelephoneLink();
