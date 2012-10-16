@@ -57,7 +57,7 @@ var Rester = {
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
 	
-	ajaxTimeout: 6000,
+	ajaxTimeout: 10000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
@@ -77,6 +77,9 @@ var Rester = {
 	// The currently playing scTrack
 	scTrack: null,
 	
+	winHeight: 0,
+	winWidth: 0,
+	
 	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
 		console.log("Rester.db :: Database created succesfully. Using DOM adapter.");
 	}),
@@ -86,12 +89,14 @@ var Rester = {
 	},
 	
 	getProp: function(id) {
-		var val = "";
+		var value = undefined;
 		Rester.db.get(id, function(obj) {
-			if (obj === undefined || obj === null) { return undefined; }
-			val = obj.val;
+			if (obj === undefined || obj === null || obj === "") { 
+				return undefined; 
+			}
+			value = obj.val;
 		});
-		return val;
+		return value;
 	},
 	
 	/**
@@ -135,6 +140,7 @@ var Rester = {
 			console.log = function() {} 
 		}
 		Rester.proxyTest();
+		Rester.initializeLocation();
 		Rester.bindEvents();
 	},
 	
@@ -153,29 +159,30 @@ var Rester = {
 		});
 		
 		$(document).bind("mobileinit", function() {
-			
 			$.mobile.allowCrossDomainPages = true;
-			$.mobile.pushStateEnabled = false;
+			$.mobile.defaultPageTransition = "none";
 			$.mobile.transitionFallbacks.slideout = "none";
-			$.mobile.loadingMessageTheme = 'a';
-			$.mobile.loadingMessageTextVisible = true;
+			$.mobile.loader.prototype.options.text = "loading";
+			$.mobile.loader.prototype.options.textVisible = false;
+			$.mobile.loader.prototype.options.theme = "a";
+			$.mobile.loader.prototype.options.html = "";
 		});
 
-		$(document).delegate("#homePage", "pageinit", function(e) {
+		$(document).bind("pagebeforeshow", function(event, ui) {
+			Rester.setStatusMsg("");
+		});
+
+		$('#homePage').live('pageinit', function(e) {
 			try {
-				console.log("#homePage.pageinit :: Initializing...");
-				Rester.initializeLocation();
 				Rester.setHeaderImage();
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
 				Rester.createLocationMenu();
+				Rester.createMap();
+				Rester.loadHomePage();
 			} catch (x) {
-				alert(x.message);
+				alert("#homePage.pageinit :: " + x.message);
 			}
-		});
-		
-		$(document).bind("pageshow", function(event, ui) {
-			Rester.setStatusMsg("");
 		});
 		
 		$('#homePage').live('pageshow', function(e) {
@@ -184,106 +191,105 @@ var Rester = {
 					$('#map_canvas').gmap('refresh');
 				} catch (x2) {
 				}
-				Rester.loadHomePage();
 			} catch (x) {
-				alert(x.message);
+				alert("#homePage.pageshow :: " + x.message);
 			}
 		});
-			
-		$('#sharePage').live('pageshow', function(e) {
+
+		$('#sharePage').live('pageinit', function(e) {
 			try {
 				Rester.loadSharePage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#sharePage.pageinit :: " + x.message);
 			}
 		});
-				
-		$('#menuPage').live('pageshow', function(e) {
+
+		$('#menuPage').live('pageinit', function(e) {
 			try {
 				Rester.loadMenuPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#menuPage.pageinit :: " + x.message);
 			}
 		});
 
-		$('#menuCategoryPage').live('pageshow', function(e) {
+		$('#menuCategoryPage').live('pageinit', function(e) {
 			try {
 				Rester.loadMenuCategoryPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#menuCategoryPage.pageinit :: " + x.message);
 			}
 		});
 
-		$('#menuItemPage').live('pageshow', function(e) {
+		$('#menuItemPage').live('pageinit', function(e) {
 			try {
 				Rester.loadMenuItemPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#menuItemPage.pageinit :: " + x.message);
 			}
 		});
 
-		$('#eventsPage').live('pageshow', function(e) {
+		$('#eventsPage').live('pageinit', function(e) {
 			try {
 				Rester.loadEventsPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#eventsPage.pageinit :: " + x.message);
 			}
 		});
 
-		$('#picturesPage').live('pageshow', function(e) {
+		$('#picturesPage').live('pageinit', function(e) {
 			try {
 				Rester.loadPicturesPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#picturesPage.pageinit :: " + x.message);
 			}
 		});
 
-		$('#picturesGalleryPage').live('pageshow', function(e) {
+		$('#picturesGalleryPage').live('pageinit', function(e) {
 			try {
 				Rester.loadPicturesGalleryPage(e);
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#picturesGalleryPage.pageinit :: " + x.message);
 			}
 		});
-		
+
 		$('#picturesGalleryPage').live('pagehide', function(e) {
 			try {
 				var
 				currentPage = $(e.target),
 					photoSwipeInstance = window.photoSwipe; // PhotoSwipe.getInstance(currentPage.attr('id'));
-				
+
 				if (typeof photoSwipeInstance != "undefined" && photoSwipeInstance != null) {
 					delete photoSwipeInstance;
 				}
 				return true;
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#picturesGalleryPage.pagehide :: " + x.message);
 			}
 		});
 
-		$('#musicPage').live('pageshow', function(e) {
+		$('#musicPage').live('pageinit', function(e) {
 			try {
 				Rester.loadMusicPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#musicPage.pageinit :: " + x.message);
 			}
 		});
-		
-		$('#musicPlayerPage').live('pageshow', function(e) {
+
+		$('#musicPlayerPage').live('pageinit', function(e) {
 			try {
 				Rester.loadMusicPlayerPage();
 			} catch (x) {
 				$.mobile.changePage("index.html");
-				alert(x.message);
+				alert("#musicPlayerPage.pageinit :: " + x.message);
 			}
 		});
 	},
@@ -306,9 +312,23 @@ var Rester = {
 		
 		var winOr = window.orientation;
 		if (winOr === 0 || winOr === 180) { // portrait
+			Rester.winHeight = $(window).height();
+			Rester.winWidth = $(window).width();
+			if (Rester.winWidth > Rester.winHeight) {
+				var temp = Rester.winHeight;
+				Rester.winHeight = Rester.winWidth;
+				Rester.winWidth = temp;
+			}
 			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
 			$('.menuItemDetailsDescription').css("float", "left");
 		} else { // landscape
+			Rester.winWidth = $(window).height();
+			Rester.winHeight = $(window).width();
+			if (Rester.winHeight < Rester.winWidth) {
+				var temp = Rester.winHeight;
+				Rester.winHeight = Rester.winWidth;
+				Rester.winWidth = temp;
+			}
 			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');
 			$('.menuItemDetailsDescription').css("float", "none");								
 		}
@@ -316,33 +336,29 @@ var Rester = {
 		// Prevent the icons from getting pushed off bottom of window.
 		Rester.fixWindow();
 		Rester.fixScroller();
-		Rester.fixMusicPlayer();
-		// // if ($.mobile.activePage === $("#homePage")) {
-		// 	Rester.loadHomePage();
-		// 	console.log("Rester.updateOrientation()", "Reloading home page.");
-		// // }
 	},
 
 	proxyTest: function() {
 		$.ajax({
-			url: Rester.albumURL, 
+			url: Rester.locations[0].picturesURL, 
 			dataType: "html",
 			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 				Rester.proxyURL = "";
 				Rester.dataType = "html";
-				console.log("Rester.proxyTest()", "Not using proxy server.");
+				console.log("Rester.proxyTest() :: Not using proxy server.");
 			},
 			error: function(data) {
-				console.log("Rester.proxyTest()", "Using proxy server.");
+				console.log("Rester.proxyTest() :: Using proxy server.");
 			}
 		});
 	},
 		
 	getBasePath: function() {
-		if (Rester.getProp('basePath') === undefined || Rester.getProp('basePath') === "") {
+		if (Rester.getProp('basePath') == null) {
 			Rester.setProp('basePath', $.mobile.path.get(window.location.href));
 		}
+		console.log("Rester.getBasePath() :: basePath="+Rester.getProp('basePath'));
 		return Rester.getProp('basePath');
 	},
 	
@@ -356,10 +372,10 @@ var Rester = {
 	
 	initializeLocation: function() {
 		var loc = Rester.getLocation();
+		console.log("Rester.initializeLocation() :: Initializing location. loc="+loc);
 		if (loc == null) {
-			console.log("initializeLocation()", "Location undefined.");
-			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
-			// $("#popupLocation").popup("open");
+			console.log("Rester.initializeLocation() :: Location undefined.");
+			Rester.setLocation(0);
 		}
 	},
 	
@@ -369,7 +385,6 @@ var Rester = {
 	
 	setLocation: function(toLocation) {
 		Rester.setProp('location', toLocation);
-		// localStorage.setItem('tkoLastLocToken', toLocation);
 	},
 	
 	getLocProp: function(prop) {
@@ -377,8 +392,7 @@ var Rester = {
 	},
 	
 	createLocationMenu: function() {
-		// <li><a data-rel="popup" onClick="Rester.switchLocation(event); return false" href="#locationMenuLevel1">San Bernardo</a></li>
-		// <li><a data-rel="popup" href="#locationMenuLevel1">Shiloh</a></li>
+		console.log("Rester.createLocationMenu() :: Creating menu.");
 		var text = "";
 		var active = "";
 		for (var i = 0; i < Rester.locations.length; i++) {
@@ -391,9 +405,12 @@ var Rester = {
 				Rester.locations[i].name + 
 				'</a></li>';
 		}
-		
 		$('#locationMenu').html(text);
-		$('#locationMenu').listview('refresh');
+		try {
+			$('#locationMenu').listview('refresh');
+		} catch (x) {
+			console.log("Rester.createLocationMenu :: "+x.message);
+		}
 	},
 	
 	switchLocation: function(e) {
@@ -405,6 +422,7 @@ var Rester = {
 					if (Rester.getLocProp('customCSS') !== '') {
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
 					}
+					Rester.createMap();
 					Rester.loadHomePage();
 				}
 			}
@@ -413,12 +431,8 @@ var Rester = {
 	
 	loadHomePage: function() {
 		
-		var galleryURL = "";
-		
-		console.log("Rester.loadHomePage()", "Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
-							
-		Rester.createMap();
-		
+		console.log("Rester.loadHomePage() :: Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+									
 		var exp = Rester.getProp("scrollExpiration"+Rester.getLocation());
 		var today = new Date();
 		
@@ -428,20 +442,18 @@ var Rester = {
 				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
 				dataType: Rester.dataType,
 				timeout: Rester.ajaxTimeout,
-				ifModified: 'true',
 			
 				success: function(data) {
 				
 					var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
-					galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
+					var galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
 				
 					$.ajax({
 						url: Rester.proxyURL + galleryURL,
 						dataType: Rester.dataType,
 						timeout: Rester.ajaxTimeout,
-						ifModified: 'true',
+
 						success: function(data) {
-						
 							var expiration=new Date();
 							expiration.setDate(expiration.getDate()+1);
 							Rester.setProp("scroll"+Rester.getLocation(), data);
@@ -500,9 +512,7 @@ var Rester = {
 	},
 	
 	fixScroller: function() {
-		var scrollMult = $(window).height() / 480.0;
-		// var scrollStr = $('#scroller li').css('width');
-		// var scrollWidth = scrollStr.substring(0, scrollStr.length - 2) * scrollMult;
+		var scrollMult = $(window).height() / Rester.winHeight;
 		var scrollWidth = Rester.scrollWidth * scrollMult;
 		$('#scroller li').css("width", scrollWidth + 'px');
 		$('#wrapper').css('height', $(window).height() / 3 + 'px');
@@ -534,7 +544,7 @@ var Rester = {
 			$('#map_canvas').gmap('addMarker', {'position': loc });
 			Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
 		} catch (x) {
-			console.log("createMap :: Google maps not loaded. Could not create map.");
+			console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
 		}
     },
 	
@@ -543,7 +553,7 @@ var Rester = {
 	},
 	
 	loadMenuPage: function() {
-		console.log("Rester.loadMenuPage()", "Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
+		console.log("Rester.loadMenuPage() :: Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
 		
 		var exp = Rester.getProp("menuExpiration"+Rester.getLocation());
 		var today = new Date();
@@ -555,7 +565,6 @@ var Rester = {
 				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
 				success: function(data) {
-		
 					if (data == null) {
 						data = Rester.getProp("menu"+Rester.getLocation());
 						if (data == null) {
@@ -568,7 +577,6 @@ var Rester = {
 						Rester.setProp("menuExpiration"+Rester.getLocation(), expiration);
 						Rester.setProp("menu"+Rester.getLocation(), data);
 					}
-				
 					Rester.createMenu(data);
 				},
 				error: function() {
@@ -722,7 +730,7 @@ var Rester = {
 	}, 
 	
 	loadEventsPage: function() {
-		console.log("Rester.loadEventsPage()", "Loading events.");
+		console.log("Rester.loadEventsPage() :: Loading events.");
 		
 		$('#wall').facebookWall({
 			id: Rester.getLocProp('fbID'),
@@ -731,7 +739,7 @@ var Rester = {
 	},
 
 	loadPicturesPage: function() {
-		console.log("Rester.loadPicturesPage()", "Loading pictures from " + 
+		console.log("Rester.loadPicturesPage() :: Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
 		var exp = Rester.getProp("picturesExpiration"+Rester.getLocation());
@@ -785,23 +793,24 @@ var Rester = {
 	
 	loadPicturesGalleryPage: function(e) {
 
-		var galleryURL = Rester.getProp("galleryURL");
+		var gallery = Rester.getProp("galleryURL");
 
-		console.log("Rester.loadPicturesGalleryPage()", "Loading gallery from " + Rester.proxyURL + galleryURL);
+		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxyURL + gallery);
+		console.log("Rester.loadPicturesGalleryPage() :: Storing gallery as " + encodeURI(gallery));
 				
-		var exp = Rester.getProp(galleryURL+"Expiration");
+		var exp = Rester.getProp(encodeURI(gallery)+"Expiration");
 		var today = new Date();
 		
 		if (exp == null || today >= exp) {
 		
 			$.ajax({
-				url: Rester.proxyURL + galleryURL,
+				url: Rester.proxyURL + gallery,
 				dataType: Rester.dataType,
 				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
 				success: function(data) {
 					if (data == null) {
-						data = Rester.getProp(galleryURL);
+						data = Rester.getProp(encodeURI(gallery));
 						if (data == null) {
 							Rester.setStatusMsg("There are currently no photos available. Please check back later.");
 							return;
@@ -809,13 +818,13 @@ var Rester = {
 					} else {
 						var expiration=new Date();
 						expiration.setDate(expiration.getDate()+1);
-						Rester.setProp(galleryURL+"Expiration", expiration);
-						Rester.setProp(galleryURL, data);
+						Rester.setProp(encodeURI(gallery)+"Expiration", expiration);
+						Rester.setProp(encodeURI(gallery), data);
 					}
 					Rester.createPicturesGallery(data);
 				},
 				error: function() {
-					var data = Rester.getProp(galleryURL);
+					var data = Rester.getProp(encodeURI(gallery));
 					if (data == null) {
 						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
 						return;
@@ -824,7 +833,7 @@ var Rester = {
 				}
 			});
 		} else {
-			Rester.createPicturesGallery(Rester.getProp(galleryURL));
+			Rester.createPicturesGallery(Rester.getProp(encodeURI(gallery)));
 		}
 	}, 
 	
@@ -851,7 +860,7 @@ var Rester = {
 	
 	loadMusicPage: function() {
 		
-		console.log("Rester.loadMusicPage()", "Loading music using SC-PLayer.");
+		console.log("Rester.loadMusicPage() :: Loading music page.");
 	
 		var exp = Rester.getProp("musicExpiration"+Rester.getLocation());
 		var today = new Date();
@@ -920,29 +929,18 @@ var Rester = {
 		$('#trackList').listview('refresh');
 	},
 	
-	fixMusicPlayer: function() {
-		// $('#audioPlayer').css('width', $(window).width() + "px");
-		// 	$('#artworkImg').css('width', $(window).width() + "px");
-	},
-	
 	loadMusicPlayerPage: function() {
 		
-		console.log("loadMusicPlayerPage() :: loading...");
+		console.log("Rester.loadMusicPlayerPage() :: Loading.");
 		
-		// $('#artworkImg').css('background-image', 'url(' + decodeURIComponent(Rester.getProp("artworkURL")) + ')');
 		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
 		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		// if (Modernizr.audio.mp3) {
-			$('#playerWidget').html(
-				'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
-					'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
-			);
-			audiojs.events.ready(function() {
-				var as = audiojs.createAll();
-			});
-		// } else {
-		// 	$('#playerWidget').html('We appologize, but your system does not support this service.');
-		// }
-		Rester.fixMusicPlayer();
+		$('#playerWidget').html(
+			'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
+				'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
+		);
+		audiojs.events.ready(function() {
+			var as = audiojs.createAll();
+		});
 	}
 };
