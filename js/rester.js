@@ -57,7 +57,7 @@ var Rester = {
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
 	
-	ajaxTimeout: 10000,
+	ajaxTimeout: 6000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
@@ -164,6 +164,8 @@ var Rester = {
 			$.mobile.allowCrossDomainPages = true;
 			$.mobile.pushStateEnabled = false;
 			$.mobile.transitionFallbacks.slideout = "none";
+			$.mobile.loadingMessageTheme = 'a';
+			$.mobile.loadingMessageTextVisible = true;
 			// $.mobile.phonegapNavigationEnabled = true;
 			
 			// $.mobile.page.prototype.options.domCache = true;
@@ -189,7 +191,6 @@ var Rester = {
 			try {
 								
 				Rester.initializeLocation();
-				Rester.createLocationMenu();
 				Rester.setHeaderImage();
 				Rester.setTelephoneLink();
 				Rester.setEmailLink();
@@ -205,7 +206,10 @@ var Rester = {
 		
 		$('#homePage').live('pageshow', function(e) {
 			try {
-				$('#map_canvas').gmap('refresh');
+				try {
+					$('#map_canvas').gmap('refresh');
+				} catch (x2) {
+				}
 				Rester.loadHomePage();
 			} catch (x) {
 				alert(x.message);
@@ -303,9 +307,6 @@ var Rester = {
 		$('#musicPlayerPage').live('pageshow', function(e) {
 			try {
 				Rester.loadMusicPlayerPage();
-				audiojs.events.ready(function() {
-					var as = audiojs.createAll();
-				});
 			} catch (x) {
 				$.mobile.changePage("index.html");
 				alert(x.message);
@@ -352,6 +353,7 @@ var Rester = {
 		$.ajax({
 			url: Rester.albumURL, 
 			dataType: "html",
+			timeout: Rester.ajaxTimeout,
 			success: function(data) {
 				Rester.proxyURL = "";
 				Rester.dataType = "html";
@@ -380,7 +382,7 @@ var Rester = {
 	
 	initializeLocation: function() {
 		var loc = Rester.getLocation();
-		if (loc === undefined || loc === "") {
+		if (loc == null) {
 			console.log("initializeLocation()", "Location undefined.");
 			Rester.setLocation(0);	// TODO: Temp fix until we can get dialog to popup.
 			// $("#popupLocation").popup("open");
@@ -403,10 +405,8 @@ var Rester = {
 	createLocationMenu: function() {
 		// <li><a data-rel="popup" onClick="Rester.switchLocation(event); return false" href="#locationMenuLevel1">San Bernardo</a></li>
 		// <li><a data-rel="popup" href="#locationMenuLevel1">Shiloh</a></li>
-		
 		var text = "";
 		var active = "";
-		
 		for (var i = 0; i < Rester.locations.length; i++) {
 			if (i === Rester.getLocation()) {
 				active = 'class="ui-list-active"';
@@ -464,6 +464,8 @@ var Rester = {
 					$.ajax({
 						url: Rester.proxyURL + galleryURL,
 						dataType: Rester.dataType,
+						timeout: Rester.ajaxTimeout,
+						ifModified: 'true',
 						success: function(data) {
 						
 							var expiration=new Date();
@@ -551,14 +553,15 @@ var Rester = {
 	},
 	
 	createMap: function() {
-		if (!googleMaps) { 
-			return; 
+		try {
+			$('#map_canvas').gmap('destroy');
+			var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
+			$('#map_canvas').gmap({'center': loc, 'zoom': 15});
+			$('#map_canvas').gmap('addMarker', {'position': loc });
+			Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
+		} catch (x) {
+			console.log("createMap :: Google maps not loaded. Could not create map.");
 		}
-		$('#map_canvas').gmap('destroy');
-		var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
-		$('#map_canvas').gmap({'center': loc, 'zoom': 15});
-		$('#map_canvas').gmap('addMarker', {'position': loc });
-		// Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
     },
 	
 	loadSharePage: function() {
@@ -949,13 +952,23 @@ var Rester = {
 	},
 	
 	loadMusicPlayerPage: function() {
+		
+		console.log("loadMusicPlayerPage() :: loading...");
+		
 		// $('#artworkImg').css('background-image', 'url(' + decodeURIComponent(Rester.getProp("artworkURL")) + ')');
 		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
 		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		$('#playerWidget').html(
-			'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
-				'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
-		);
+		// if (Modernizr.audio.mp3) {
+			$('#playerWidget').html(
+				'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
+					'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
+			);
+			audiojs.events.ready(function() {
+				var as = audiojs.createAll();
+			});
+		// } else {
+		// 	$('#playerWidget').html('We appologize, but your system does not support this service.');
+		// }
 		Rester.fixMusicPlayer();
 	}
 };

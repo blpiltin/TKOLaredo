@@ -456,7 +456,7 @@ text-decoration: none !important;
 	background-color: transparent;
 }
 .ui-icon-loading {
-	background-image: url(images/ajax-loader.png);
+	background-image: url(images/loader.gif);
 	width: 40px;
 	height: 40px;
 	-moz-border-radius:20px;
