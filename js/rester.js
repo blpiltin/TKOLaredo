@@ -11,7 +11,7 @@
 var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
-	DEBUG: 1,
+	DEBUG: 0,
 	
 	// Data for each individual restaurant location
 	locations: [
