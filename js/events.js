@@ -22,9 +22,13 @@
 		}
 		
 		// Default options of the plugin:
+		var sinceTime = new Date();
+		sinceTime.setDate(sinceTime.getDate()-7);
+		sinceTime = Math.round(sinceTime.getTime() / 1000);
 		
 		options = $.extend({
-			limit: 15	// You can also pass a custom limit as a parameter.
+			limit: 10,	// You can also pass a custom limit as a parameter.
+			since: sinceTime
 		},options);
 
 		// Putting together the Facebook Graph API URLs:
@@ -35,7 +39,11 @@
 		var graphUSER = 'https://graph.facebook.com/'+options.id+'/',
 			graphPOSTS = 'https://graph.facebook.com/'
 				+options.id+'/posts/?access_token='+
-				options.access_token+'&callback=?&date_format=U&limit='+options.limit;
+				options.access_token+'&callback=?&date_format=U&since='+options.since;
+			graphPICTURE = 'https://graph.facebook.com/'
+					+options.id+'/picture/';
+					
+		console.log("facebookWall() :: graphUser url="+graphUSER+" graphPosts url="+graphPOSTS);
 		
 		var wall = this;
 		
@@ -54,13 +62,15 @@
 					posts : []
 				};
 
+				console.log("facebookWall() :: received " + posts[0].data.length + " posts.");
+				
 				$.each(posts[0].data,function(){
 				
 					// We only show links and statuses from the posts feed:
-					if((this.type != 'link' && this.type!='status') || !this.message){
-						return true;
-					}
-
+					// if((this.type != 'link' && this.type!='status') || (!this.message && !this.story)){
+					// 				return true;
+					// 			}
+			
 					// Copying the user avatar to each post, so it is
 					// easier to generate the templates:
 					// if (fb.user.picture === "") {
@@ -70,15 +80,20 @@
 					// 			}
 					// 			
 					// 			console.debug('wallscript()', 'picture=' + this.from.picture);
-					this.from.picture = Rester.getLocProp('fbPicture');
-				
+					// this.from.picture = Rester.getLocProp('fbPicture');
+					this.from.picture = graphPICTURE;
+					
 					// Converting the created_time (a UNIX timestamp) to
 					// a relative time offset (e.g. 5 minutes ago):
 					this.created_time = relativeTime(this.created_time*1000);
 				
 					// Converting URL strings to actual hyperlinks:
-					this.message = urlHyperlinks(this.message);
-
+					if (this.message == null) {
+						this.message = urlHyperlinks(this.story);
+					} else {
+						this.message = urlHyperlinks(this.message);
+					}
+					
 					fb.posts.push(this);
 				});
 
@@ -97,7 +112,7 @@
 				$('#feedTpl').tmpl(fb.posts).appendTo(ul);
 			
 				var expiration=new Date();
-				expiration.setDate(expiration.getHours()+12);
+				expiration.setDate(expiration.getHours()+1);
 				Rester.setProp("eventsExpiration"+Rester.getLocation(), expiration);
 				Rester.setProp("events"+Rester.getLocation(), fb);
 			

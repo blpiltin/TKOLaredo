@@ -95,14 +95,14 @@
 }
 
 .menuItemDetailsImage {
-	height: 200px;
+	height: 210px;
 	margin: 10px auto;
 	overflow: hidden; 
 	float: left;
 }
 
 .menuItemDetailsImage img {
-	height: 198px;
+	height: 208px;
 	border: 1px solid red;
 	width: auto;
 	margin-right: 5px;
@@ -189,13 +189,6 @@ div#musicPlayerPage .ui-content {
 
 #audioTitle {
 	white-space: pre-wrap;
-	text-align: center;
-	margin-top: 5px;
-}
-
-#playerWidget {
-	width: 100%;
-	float: left;
 	text-align: center;
 	margin-top: 5px;
 }

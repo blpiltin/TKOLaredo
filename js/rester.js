@@ -64,6 +64,7 @@ var Rester = {
 	
 	// The width in pixels for each scroller image
 	scrollWidth: 120,
+	
 	// The maximum number of photos on the front page scroll
 	MAX_SCROLL: 12,
 	// The current number of photos in the front page scroll
@@ -72,6 +73,9 @@ var Rester = {
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
 	
+	// Soundmanager2 initialized flag
+	smReady: false,
+	
 	// SoundCloud client id
 	scClientID: '1ea1ab57eb6ef387a5c5b2d02484da4d',
 	// The currently playing scTrack
@@ -79,6 +83,7 @@ var Rester = {
 	
 	winHeight: 0,
 	winWidth: 0,
+	androidScrollFix: false,
 	
 	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
 		console.log("Rester.db :: Database created succesfully. Using DOM adapter.");
@@ -134,13 +139,125 @@ var Rester = {
 		$('.statusMsg').html(text);
 	},
 	
+	onDeviceReady: function() {
+ 		navigator.splashscreen.hide();
+    },
+
+	fixWindow: function() {
+		$(document).width($(window).width());
+		$('html').css("width", $(window).width());
+		$('body').css("width", $(window).width());
+	},
+	
+	fixScroller: function() {
+		var scrollMult = 1.0;
+		if (Rester.winHeight != 0) {
+			scrollMult = $(window).height() / Rester.winHeight;
+		}
+		if (scrollMult > 1.0 || Rester.androidScrollFix == true) {
+			// Fix for Android 2.2 and 2.3 weirdness
+			Rester.androidScrollFix = true;
+			return;
+		}
+		console.log("Rester.fixScroller() :: using a multiplier of " + scrollMult);
+		var scrollWidth = Rester.scrollWidth * scrollMult;
+		$('#scroller li').css("width", scrollWidth + 'px');
+		$('#wrapper').css('height', $(window).height() / 3 + 'px');
+		$('#scroller').css('height', $(window).height() / 3 + 'px');
+		$('#scroller li img').css('height', $(window).height() / 3 + 'px');
+		$('#wrapper').css("width", $(window).width() + 'px');
+		$('#scroller').css("width", scrollWidth * Rester.scrollSize + 'px');
+		if (window.myScroll != null) {
+			window.myScroll.refresh();
+		}
+	},
+	
+	/**
+	 * Fix the orientation of any css based widgets after the
+	 * orientation has changed.
+	 */
+	updateOrientation: function() {
+		
+		var winOr = window.orientation;
+		if (winOr === 0 || winOr === 180) { // portrait
+			Rester.winHeight = $(window).height();
+			Rester.winWidth = $(window).width();
+			$('.menuItemDetailsDescription').css("float", "left");
+		} else { // landscape
+			Rester.winWidth = $(window).height();
+			Rester.winHeight = $(window).width();
+			$('.menuItemDetailsDescription').css("float", "none");								
+		}
+		
+		console.log("Rester.updateOrientation() :: winHeight="+Rester.winHeight+" winWidth="+Rester.winWidth);
+		
+		// $(document).width($(window).width());
+		// Prevent the icons from getting pushed off bottom of window.
+		Rester.fixWindow();
+		Rester.fixScroller();
+	},
+
+	proxyTest: function() {
+		$.ajax({
+			url: Rester.locations[0].picturesURL, 
+			dataType: "html",
+			timeout: Rester.ajaxTimeout,
+			success: function(data) {
+				Rester.proxyURL = "";
+				Rester.dataType = "html";
+				console.log("Rester.proxyTest() :: Not using proxy server.");
+			},
+			error: function(data) {
+				console.log("Rester.proxyTest() :: Using proxy server.");
+			}
+		});
+	},
+		
+	getBasePath: function() {
+		if (Rester.getProp('basePath') == null) {
+			Rester.setProp('basePath', $.mobile.path.get(window.location.href));
+		}
+		console.log("Rester.getBasePath() :: basePath="+Rester.getProp('basePath'));
+		return Rester.getProp('basePath');
+	},
+	
+	getFacebookToken: function() {
+		return Rester.getProp('fbToken');
+	},
+	
+	setFacebookToken: function(token) {
+		Rester.setProp('fbToken', token);
+	},
+	
+	initLocation: function() {
+		var loc = Rester.getLocation();
+		console.log("Rester.initLocation() :: Initializing location. loc="+loc);
+		if (loc == null) {
+			console.log("Rester.initLocation() :: Location undefined.");
+			Rester.setLocation(0);
+		}
+	},
+	
+	getLocation: function() {
+		return Rester.getProp('location');
+	},
+	
+	setLocation: function(toLocation) {
+		Rester.setProp('location', toLocation);
+	},
+	
+	getLocProp: function(prop) {
+		return Rester.locations[Rester.getLocation()][prop];
+	},
+	
 	// Rester Constructor
-	initialize: function() {
+	init: function() {
 		if (!Rester.DEBUG) { 
 			console.log = function() {} 
 		}
 		Rester.proxyTest();
-		Rester.initializeLocation();
+		Rester.initLocation();
+		Rester.initSoundManager();
 		Rester.bindEvents();
 	},
 	
@@ -174,11 +291,6 @@ var Rester = {
 
 		$('#homePage').live('pageinit', function(e) {
 			try {
-				Rester.setHeaderImage();
-				Rester.setTelephoneLink();
-				Rester.setEmailLink();
-				Rester.createLocationMenu();
-				Rester.createMap();
 				Rester.loadHomePage();
 			} catch (x) {
 				alert("#homePage.pageinit :: " + x.message);
@@ -189,7 +301,10 @@ var Rester = {
 			try {
 				try {
 					$('#map_canvas').gmap('refresh');
-				} catch (x2) {
+				} catch (x) {
+				}
+				if (window.myScroll != null) {
+					window.myScroll.refresh();
 				}
 			} catch (x) {
 				alert("#homePage.pageshow :: " + x.message);
@@ -292,103 +407,15 @@ var Rester = {
 				alert("#musicPlayerPage.pageinit :: " + x.message);
 			}
 		});
-	},
-	
-	onDeviceReady: function() {
- 		navigator.splashscreen.hide();
-    },
-
-	fixWindow: function() {
-		$(document).width($(window).width());
-		$('html').css("width", $(window).width());
-		$('body').css("width", $(window).width());
-	},
-	
-	/**
-	 * Fix the orientation of any css based widgets after the
-	 * orientation has changed.
-	 */
-	updateOrientation: function() {
 		
-		var winOr = window.orientation;
-		if (winOr === 0 || winOr === 180) { // portrait
-			Rester.winHeight = $(window).height();
-			Rester.winWidth = $(window).width();
-			if (Rester.winWidth > Rester.winHeight) {
-				var temp = Rester.winHeight;
-				Rester.winHeight = Rester.winWidth;
-				Rester.winWidth = temp;
-			}
-			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-vertical.css');
-			$('.menuItemDetailsDescription').css("float", "left");
-		} else { // landscape
-			Rester.winWidth = $(window).height();
-			Rester.winHeight = $(window).width();
-			if (Rester.winHeight < Rester.winWidth) {
-				var temp = Rester.winHeight;
-				Rester.winHeight = Rester.winWidth;
-				Rester.winWidth = temp;
-			}
-			// $('#cssSCWidgetOrientation').attr('href', 'lib/sc-player/css/sc-player-standard/structure-horizontal.css');
-			$('.menuItemDetailsDescription').css("float", "none");								
-		}
-		// $(document).width($(window).width());
-		// Prevent the icons from getting pushed off bottom of window.
-		Rester.fixWindow();
-		Rester.fixScroller();
-	},
-
-	proxyTest: function() {
-		$.ajax({
-			url: Rester.locations[0].picturesURL, 
-			dataType: "html",
-			timeout: Rester.ajaxTimeout,
-			success: function(data) {
-				Rester.proxyURL = "";
-				Rester.dataType = "html";
-				console.log("Rester.proxyTest() :: Not using proxy server.");
-			},
-			error: function(data) {
-				console.log("Rester.proxyTest() :: Using proxy server.");
+		$('#musicPlayerPage').live('pagehide', function(e) {
+			try {
+				Rester.initMusicTrack();
+			} catch (x) {
+				$.mobile.changePage("index.html");
+				alert("#musicPlayerPage.pagehide :: " + x.message);
 			}
 		});
-	},
-		
-	getBasePath: function() {
-		if (Rester.getProp('basePath') == null) {
-			Rester.setProp('basePath', $.mobile.path.get(window.location.href));
-		}
-		console.log("Rester.getBasePath() :: basePath="+Rester.getProp('basePath'));
-		return Rester.getProp('basePath');
-	},
-	
-	getFacebookToken: function() {
-		return Rester.getProp('fbToken');
-	},
-	
-	setFacebookToken: function(token) {
-		Rester.setProp('fbToken', token);
-	},
-	
-	initializeLocation: function() {
-		var loc = Rester.getLocation();
-		console.log("Rester.initializeLocation() :: Initializing location. loc="+loc);
-		if (loc == null) {
-			console.log("Rester.initializeLocation() :: Location undefined.");
-			Rester.setLocation(0);
-		}
-	},
-	
-	getLocation: function() {
-		return Rester.getProp('location');
-	},
-	
-	setLocation: function(toLocation) {
-		Rester.setProp('location', toLocation);
-	},
-	
-	getLocProp: function(prop) {
-		return Rester.locations[Rester.getLocation()][prop];
 	},
 	
 	createLocationMenu: function() {
@@ -422,10 +449,65 @@ var Rester = {
 					if (Rester.getLocProp('customCSS') !== '') {
 						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
 					}
-					Rester.createMap();
 					Rester.loadHomePage();
 				}
 			}
+		}
+	},
+	
+	setHeaderImage: function() {
+		if (Rester.getLocProp('customCSS') !== '') {
+			$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
+		}
+	},
+	
+	setTelephoneLink: function() {
+		$('#telephone').attr('href', 'tel:' + Rester.getLocProp('telephone'));
+	},
+	
+	setEmailLink: function() {
+		$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
+	},
+	
+	createMap: function() {
+		try {
+			$('#map_canvas').gmap('destroy');
+			var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
+			$('#map_canvas').gmap({'center': loc, 'zoom': 15});
+			$('#map_canvas').gmap('addMarker', {'position': loc });
+			Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
+		} catch (x) {
+			console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
+		}
+    },
+	
+	createScroller: function(data) {
+					
+		var style = "";
+		var text = "";
+		// var indicator = '<li class="active">1</li>';
+		var images = $(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
+		Rester.scrollSize = 0;
+
+		for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
+			Rester.scrollSize++;
+			text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
+				'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
+			// indicator += ((i === 0) ? '' : '<li>' + (i + 1) + '</li>');
+		}
+
+		if (text != '') {
+			$('#thelist').html(text);
+			if (window.myScroll != null) {
+				window.myScroll.destroy();
+			}
+			Rester.fixScroller();
+			window.myScroll = new iScroll('wrapper', {
+				snap: false,
+				momentum: true,
+				hScrollbar: false
+			});
+			console.log("Rester.createScroller() :: Scroller creation successful.");
 		}
 	},
 	
@@ -436,13 +518,18 @@ var Rester = {
 		var exp = Rester.getProp("scrollExpiration"+Rester.getLocation());
 		var today = new Date();
 		
+		Rester.setHeaderImage();
+		Rester.setTelephoneLink();
+		Rester.setEmailLink();
+		Rester.createLocationMenu();
+		Rester.createMap();
+		
 		if (exp == null || today >= exp) {
 			$.ajax({
-			
 				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-				dataType: Rester.dataType,
 				timeout: Rester.ajaxTimeout,
-			
+				dataType: Rester.dataType,
+				
 				success: function(data) {
 				
 					var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
@@ -450,9 +537,8 @@ var Rester = {
 				
 					$.ajax({
 						url: Rester.proxyURL + galleryURL,
-						dataType: Rester.dataType,
 						timeout: Rester.ajaxTimeout,
-
+						dataType: Rester.dataType,
 						success: function(data) {
 							var expiration=new Date();
 							expiration.setDate(expiration.getDate()+1);
@@ -485,69 +571,6 @@ var Rester = {
 		}
 	},
 	
-	createScroller: function(data) {
-		
-		var style = "";
-		var text = "";
-		var indicator = '<li class="active">1</li>';
-		var images = $(Rester.getDataContents(data)).find('div.ngg-gallery-thumbnail-box');
-		Rester.scrollSize = 0;
-
-		for (var i = 0; i < images.length && i < Rester.MAX_SCROLL; i++) {
-			Rester.scrollSize++;
-			text += '<li>' + '<img src="' + $(images[i]).find('a').attr('href') + 
-				'" alt="' + $(images[i]).find('img').attr('alt') + '"/>' + '</li>';
-			indicator += ((i === 0) ? '' : '<li>' + (i + 1) + '</li>');
-		}
-
-		if (text !== '') {
-			$('#thelist').html(text);
-			Rester.fixScroller();
-			window.myScroll = new iScroll('wrapper', {
-				snap: false,
-				momentum: true,
-				hScrollbar: false
-			});
-		}
-	},
-	
-	fixScroller: function() {
-		var scrollMult = $(window).height() / Rester.winHeight;
-		var scrollWidth = Rester.scrollWidth * scrollMult;
-		$('#scroller li').css("width", scrollWidth + 'px');
-		$('#wrapper').css('height', $(window).height() / 3 + 'px');
-		$('#scroller').css('height', $(window).height() / 3 + 'px');
-		$('#scroller li img').css('height', $(window).height() / 3 + 'px');
-		$('#wrapper').css("width", $(window).width() + 'px');
-		$('#scroller').css("width", scrollWidth * Rester.scrollSize);
-	},
-	
-	setHeaderImage: function() {
-		if (Rester.getLocProp('customCSS') !== '') {
-			$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-		}
-	},
-	
-	setTelephoneLink: function() {
-		$('#telephone').attr('href', 'tel:' + Rester.getLocProp('telephone'));
-	},
-	
-	setEmailLink: function() {
-		$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
-	},
-	
-	createMap: function() {
-		try {
-			$('#map_canvas').gmap('destroy');
-			var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
-			$('#map_canvas').gmap({'center': loc, 'zoom': 15});
-			$('#map_canvas').gmap('addMarker', {'position': loc });
-			Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
-		} catch (x) {
-			console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
-		}
-    },
-	
 	loadSharePage: function() {
 		Facebook.bodyLoad();
 	},
@@ -561,9 +584,8 @@ var Rester = {
 		if (exp == null || today >= exp) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				dataType: Rester.dataType,
-				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					if (data == null) {
 						data = Rester.getProp("menu"+Rester.getLocation());
@@ -631,9 +653,8 @@ var Rester = {
 		if (data == null) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				dataType: Rester.dataType,
-				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					Rester.setProp("menu"+Rester.getLocation(), data);
 					Rester.createMenuCategories(data);
@@ -681,9 +702,8 @@ var Rester = {
 		if (data == null) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				dataType: Rester.dataType,
-				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					Rester.setProp("menu"+Rester.getLocation(), data);
 					Rester.createMenuItem(data);
@@ -748,9 +768,8 @@ var Rester = {
 		if (exp == null || today >= exp) {
 			$.ajax({
 				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-				dataType: Rester.dataType,
-				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					if (data == null) {
 						data = Rester.getProp("pictures"+Rester.getLocation());
@@ -805,9 +824,8 @@ var Rester = {
 		
 			$.ajax({
 				url: Rester.proxyURL + gallery,
-				dataType: Rester.dataType,
-				ifModified: 'true',
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					if (data == null) {
 						data = Rester.getProp(encodeURI(gallery));
@@ -868,10 +886,9 @@ var Rester = {
 		if (exp == null || today >= exp) {
 					
 			$.ajax({
-				url: Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
-				dataType: Rester.dataType,
-				ifModified: 'true',
+				url: Rester.proxyURL + Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
 				timeout: Rester.ajaxTimeout,
+				dataType: Rester.dataType,
 				success: function(data) {
 					
 					if (data == null) {
@@ -915,7 +932,7 @@ var Rester = {
 		for (var i = 0; i < data.length; i++) {
 				audioTitle = data[i].title;
 				artworkURL = data[i].artwork_url;
-				audioURL = data[i].download_url;
+				audioURL = data[i].stream_url;
 				newHTML += '<li class="audioTrack">' + 
 				'<a href="musicplayer.html" ' + 
 				'onclick=\'' + 
@@ -935,12 +952,81 @@ var Rester = {
 		
 		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
 		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		$('#playerWidget').html(
-			'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
-				'?client_id=' + Rester.scClientID + '" preload="auto"></audio>'
-		);
-		audiojs.events.ready(function() {
-			var as = audiojs.createAll();
+		// $('#playerWidget a').attr('href', decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID);
+		// $('#playerWidget a').attr('title', Rester.getProp("audioTitle"));
+		// $('#playerWidget a').html(decodeURIComponent(Rester.getProp("audioTitle")));
+	
+		// $('#playerWidget p').html(decodeURIComponent(Rester.getProp("audioTitle")));
+		
+		// soundManager.setup({
+		//   	url: 'lib/soundmanager2/swf/',
+		// });
+		
+		if (Rester.smReady) {
+			Rester.initMusicTrack();
+		  	Rester.scTrack = soundManager.createSound({
+		      id: Rester.getProp("audioTitle"),
+		      url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID
+		    });
+		    Rester.playMusicTrack();
+		} else {
+			Rester.setStatusMsg("Music is not currently supported on your device.");
+			$('#pauseBtn').hide(); 
+			$('#playBtn').hide();
+			$('#playerWidget').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
+			console.log("Rester.loadMusicPlayerPage() :: soundManager.ok() failed.");
+		}
+		
+		// $('#playerWidget').html(
+		// 	'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
+		// 		'?client_id=' + Rester.scClientID + '" preload="auto" autoplay="autoplay"></audio>');
+	},
+	
+	initSoundManager: function() {
+		if (Rester.smReady) return;
+		soundManager.setup({
+		  	url: 'lib/soundmanager2/swf/',
+			  useFlashBlock: false, // optionally, enable when you're ready to dive in
+				preferFlash: false,
+				debugMode: false,
+		  onready: function() {
+		  	console.log('SM2 ready!');
+			Rester.smReady = true;
+		  },
+		  ontimeout: function() {
+		  	console.log('SM2 init failed!');
+		  },
+		  defaultOptions: {
+		    // set global default volume for all sound objects
+		    volume: 100
+		  }
 		});
+	},
+	
+	playMusicTrack: function() {
+		if (Rester.scTrack != null) {
+			Rester.scTrack.play();
+			$('#playBtn').hide();
+			$('#pauseBtn').show(); 
+		}
+	},
+	
+	pauseMusicTrack: function() {
+		if (Rester.scTrack != null) {
+			Rester.scTrack.pause();
+			$('#pauseBtn').hide(); 
+			$('#playBtn').show();
+		}
+	},
+	
+	initMusicTrack: function() {
+		try {
+			if (Rester.scTrack != null) {
+				Rester.scTrack.destruct();
+				Rester.scTrack = null;
+			}
+		} catch (x) {
+			console.log("Rester.initMusicTrack() :: problem destroying track.");
+		}
 	}
 };
