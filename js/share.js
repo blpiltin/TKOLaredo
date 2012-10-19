@@ -156,8 +156,10 @@ var Facebook = {
 
 	bodyLoad: function() {
 		
+		var token = Rester.getFacebookToken();
+		
 		// First lets check to see if we have a user or not
-		if (Rester.getFacebookToken() === 'undefined' || Rester.getFacebookToken() === "") {
+		if (token == null) {
 			
 			console.log("Facebook.bodyLoad()", "Don't have local token yet.");
 

@@ -251,11 +251,14 @@ var Rester = {
 	},
 	
 	getFacebookToken: function() {
-		return Rester.getProp('fbToken');
+		if (!Rester.isExpired('fbToken')) {
+			return Rester.getCachedData('fbToken');
+		}
+		return null;
 	},
 	
 	setFacebookToken: function(token) {
-		Rester.setProp('fbToken', token);
+		Rester.cacheData('fbToken', token, 1, 0);
 	},
 	
 	initLocation: function() {
