@@ -46,11 +46,8 @@
 		console.log("facebookWall() :: graphUser url="+graphUSER+" graphPosts url="+graphPOSTS);
 		
 		var wall = this;
-		
-		var exp = Rester.getProp("eventsExpiration"+Rester.getLocation());
-		var today = new Date();
-		
-		if (exp == null || today >= exp) {
+				
+		if (Rester.isExpired("events"+Rester.getLocation())) {
 		
 			$.when($.getJSON(graphUSER),$.getJSON(graphPOSTS)).done(function(user,posts){
 			
@@ -111,16 +108,13 @@
 				// Generating the feed template and appending:
 				$('#feedTpl').tmpl(fb.posts).appendTo(ul);
 			
-				var expiration=new Date();
-				expiration.setDate(expiration.getHours()+1);
-				Rester.setProp("eventsExpiration"+Rester.getLocation(), expiration);
-				Rester.setProp("events"+Rester.getLocation(), fb);
+				Rester.cacheData("events"+Rester.getLocation(), fb);
 			
 			});
 			
 		} else {
 			
-			var fb = Rester.getProp("events"+Rester.getLocation());
+			var fb = Rester.getCachedData("events"+Rester.getLocation());
 			
 			if (fb.posts.length == 0) {
 				$('#wall').html('<h3>There are no events to display.</h3>');

@@ -11,7 +11,7 @@
 var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
-	DEBUG: 0,
+	DEBUG: 1,
 	
 	// Data for each individual restaurant location
 	locations: [
@@ -52,7 +52,9 @@ var Rester = {
 			'customCSS': 'jquery-mobile/tko-sh.css'
 		}
 	], 
-		
+	
+	online: true,
+	
 	// The URL for the proxy server to convert html to jsonp
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
@@ -140,8 +142,34 @@ var Rester = {
 	},
 	
 	onDeviceReady: function() {
- 		navigator.splashscreen.hide();
+		console.log("Rester.onDeviceReady() :: event received.");
+		document.addEventListener("online", Rester.onOnline, false);
+		document.addEventListener("offline", Rester.onOffline, false);
+		document.addEventListener("pause", Rester.onPause, false);
+		document.addEventListener("resume", Rester.onResume, false);
     },
+
+	onPause: function() {
+	    console.log("Rester.onPause()");
+		alert("Got pause event!");
+	},
+	
+	onResume: function() {
+	    console.log("Rester.onResume()");
+		alert("Got resume event!");
+	},
+	
+	onOnline: function() {
+		console.log("Rester.onOnline()");
+		alert("Got online event!");
+		// Rester.online = true;
+	},
+	
+	onOffline: function() {
+		console.log("Rester.onOffline()");
+		alert("Got offline event!");
+		// Rester.online = false;
+	},
 
 	fixWindow: function() {
 		$(document).width($(window).width());
@@ -198,10 +226,15 @@ var Rester = {
 	},
 
 	proxyTest: function() {
+		if (!Rester.online) {
+			console.log("Rester.proxyTest() :: Using proxy server.");
+			return;
+		}
 		$.ajax({
 			url: Rester.locations[0].picturesURL, 
 			dataType: "html",
-			timeout: Rester.ajaxTimeout,
+			async: false,
+			timeout: 5000,
 			success: function(data) {
 				Rester.proxyURL = "";
 				Rester.dataType = "html";
@@ -416,6 +449,15 @@ var Rester = {
 				alert("#musicPlayerPage.pagehide :: " + x.message);
 			}
 		});
+		
+		MapsLoader.readyCallback = function() {
+			try {
+				Rester.createMap();
+				$('#map_canvas').gmap('refresh');
+			} catch (x) {
+				
+			}
+		};
 	},
 	
 	createLocationMenu: function() {
@@ -475,9 +517,14 @@ var Rester = {
 			var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
 			$('#map_canvas').gmap({'center': loc, 'zoom': 15});
 			$('#map_canvas').gmap('addMarker', {'position': loc });
-			Rester.setProp("map"+Rester.getLocation(), $('#map_canvas').gmap());
+			Rester.cacheData("map"+Rester.getLocation(), $('#map_canvas').get(), 0, 0);
 		} catch (x) {
-			console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
+			var map = Rester.getCachedData("map"+Rester.getLocation());
+			if (map == null) {
+				console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
+				return;
+			}
+			$(map);
 		}
     },
 	
@@ -511,12 +558,123 @@ var Rester = {
 		}
 	},
 	
+	cacheData: function(key, data, expDays, expHours) {
+		var expiration = new Date();
+		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
+		if (expHours) { expiration.setDate(expiration.getHours() + expHours); }
+		Rester.setProp(key, data);
+		Rester.setProp(key+"exp", expiration);
+		return expiration;
+	},
+	
+	isExpired: function(key) {
+		expiration = Rester.getProp(key+"exp");
+		var now = new Date();
+		return (expiration == null || expiration == undefined || expiration >= now);
+	},
+	
+	getCachedData: function(key) {
+		return Rester.getProp(key);
+	},
+	
+	/**
+	 * Uses either the cache or ajax to load data from a specific source.
+	 * Options include:
+	 *	key: the key used to cache this object. (required)
+	 * 	expDays: the number of days to expire the cache.
+	 *	expHours: the number of hours to expire the cahce.
+	 *	url: the url used to retreive this object from the network. (required)
+	 * 	timeout: the timeout used when calling ajax before error.
+	 *	dataType: the dataType to use for the ajax call.
+	 * 	success: a callback function with the data as a parameter if
+	 * 		we were able to load from either the cache or the url. (required)
+	 * 	error: a callback function to execute if the data could not
+	 * 		be loaded.
+	 */ 
+	loadData: function(userOptions) {
+		
+		var data = null;
+		var	i = 0;
+		var options = {
+			key: "",
+			expDays: 0,
+			expHours: 0,
+			url: "",
+			timeout: Rester.ajaxTimeout,
+			dataType: Rester.dataType,
+			success: null,
+			error: null
+		}
+		
+		for (i in options) { options[i] = userOptions[i]; }
+		
+		if (!Rester.isExpired(options.key) || !Rester.online) {
+			
+			console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
+			
+			data = Rester.getCachedData(options.key);
+			if (data == null) {
+				// Object not in cache.
+				console.log("Rester.loadData() :: error loading data from cache.");
+				if (!Rester.online) {
+					if (options.error) { 
+						options.error(); 
+						return;
+					}
+				}
+			} else {
+				if (options.success) { options.success(data); }
+			}
+		} 
+		
+		if (data == null) {
+			
+			console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
+			
+			$.ajax({
+				url: options.url,
+				timeout: options.timeout,
+				dataType: options.dataType,
+				success: function(data) {
+					
+					console.log("Rester.loadData() :: ajax success.");
+
+					if (data == null) {
+						// Check to see if object is in cache first.
+						data = Rester.getCachedData(options.key);
+						if (data == null) {
+							// Object can't be loaded and not cached.
+							console.log("Rester.loadData() :: error loading data from url and cache.");
+							if (options.error) { options.error(); }
+							return;
+						}
+						if (options.success) { options.success(data); }
+					} else {
+						// Object successfully loaded
+						Rester.cacheData(options.key, data, options.expDays, options.expHours);
+						if (options.success) { options.success(data); }
+					}
+				},
+				error: function() {
+					// We couldn't load through ajax, so try to load data from the cache.
+					console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
+
+					data = Rester.getCachedData(options.key);
+					if (data == null) {
+						// Object not in cache, this is a dead end.
+						console.log("Rester.loadData() :: error loading data from url and cache.");
+						if (options.error) { options.error(); }
+						return;
+					}
+					if (options.success) { options.error(data); }
+				}
+			});
+		}
+	},
+	
 	loadHomePage: function() {
 		
 		console.log("Rester.loadHomePage() :: Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
-									
-		var exp = Rester.getProp("scrollExpiration"+Rester.getLocation());
-		var today = new Date();
 		
 		Rester.setHeaderImage();
 		Rester.setTelephoneLink();
@@ -524,98 +682,33 @@ var Rester = {
 		Rester.createLocationMenu();
 		Rester.createMap();
 		
-		if (exp == null || today >= exp) {
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp("picturesURL"),
+			key: "pictures"+Rester.getLocation(),
+			expDays: 1,
+			success: function(data) {
 				
-				success: function(data) {
+				var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
+				var galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
 				
-					var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
-					var galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
-				
-					$.ajax({
-						url: Rester.proxyURL + galleryURL,
-						timeout: Rester.ajaxTimeout,
-						dataType: Rester.dataType,
-						success: function(data) {
-							var expiration=new Date();
-							expiration.setDate(expiration.getDate()+1);
-							Rester.setProp("scroll"+Rester.getLocation(), data);
-							Rester.setProp("scrollExpiration"+Rester.getLocation(), expiration);
-							Rester.createScroller(data);
-						},
-						error: function() {
-							var data = Rester.getProp("scroll"+Rester.getLocation());
-							if (data == null) {
-								Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-							} else {
-								Rester.createScroller(data);
-							}
-						}
-					});
-				},
-			
-				error: function() {
-					var data = Rester.getProp("scroll"+Rester.getLocation());
-					if (data == null) {
+				Rester.loadData({
+					url: Rester.proxyURL + galleryURL,
+					key: "scroll"+Rester.getLocation(),
+					expDays: 1,
+					success: Rester.createScroller,
+					error: function() {
 						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-					} else {
-						Rester.createScroller(data);
-					}
-				}
-			});
-		} else {
-			Rester.createScroller(Rester.getProp("scroll"+Rester.getLocation()));
-		}
+					}});
+			},
+			error: function() {
+				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+			}});
 	},
 	
 	loadSharePage: function() {
 		Facebook.bodyLoad();
 	},
 	
-	loadMenuPage: function() {
-		console.log("Rester.loadMenuPage() :: Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
-		
-		var exp = Rester.getProp("menuExpiration"+Rester.getLocation());
-		var today = new Date();
-		
-		if (exp == null || today >= exp) {
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					if (data == null) {
-						data = Rester.getProp("menu"+Rester.getLocation());
-						if (data == null) {
-							Rester.setStatusMsg("There are currently no menu items available. Please check back later.");
-							return;
-						}
-					} else {
-						var expiration=new Date();
-						expiration.setDate(expiration.getDate()+1);
-						Rester.setProp("menuExpiration"+Rester.getLocation(), expiration);
-						Rester.setProp("menu"+Rester.getLocation(), data);
-					}
-					Rester.createMenu(data);
-				},
-				error: function() {
-				
-					var data = Rester.getProp("menu"+Rester.getLocation());
-					if (data == null) {
-						Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-						return;
-					}
-					Rester.createMenu(data);
-				}
-			});
-		} else {
-			Rester.createMenu(Rester.getProp("menu"+Rester.getLocation()));
-		}
-	},
-
 	createMenu: function(data) {
 		
 		var categories = [];
@@ -648,26 +741,19 @@ var Rester = {
 		$('#menuCategories').listview('refresh');
 	},
 	
-	loadMenuCategoryPage: function() {	
-		var data = Rester.getProp("menu"+Rester.getLocation());
-		if (data == null) {
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					Rester.setProp("menu"+Rester.getLocation(), data);
-					Rester.createMenuCategories(data);
-				},
-				error: function() {
-					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-				}
-			});
-		} else {
-			Rester.createMenuCategories(data);
-		}
+	loadMenuPage: function() {
+		console.log("Rester.loadMenuPage() :: Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
+		
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			key: "menu"+Rester.getLocation(),
+			expDays: 1,
+			success: Rester.createMenu,
+			error: function() {
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+			}});
 	},
-	
+
 	createMenuCategories: function(data) {
 		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
 
@@ -695,28 +781,20 @@ var Rester = {
 		$('#menuItems').html(newHTML);
 		$('#menuItems').listview('refresh');
 	},
-
-	loadMenuItemPage: function() {
+	
+	loadMenuCategoryPage: function() {	
 		
-		var data = Rester.getProp("menu"+Rester.getLocation());
-		if (data == null) {
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('menuURL'),
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					Rester.setProp("menu"+Rester.getLocation(), data);
-					Rester.createMenuItem(data);
-				},
-				error: function() {
-					Rester.setStatusMsg("Menu will be shown when a network connection is available.");
-				}
-			});
-		} else {
-			Rester.createMenuItem(data);
-		}
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			key: "menu"+Rester.getLocation(),
+			expDays: 1,
+			success: Rester.createMenuCategories,
+			error: function() {
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+			}});
+			
 	},
-
+	
 	createMenuItem: function(data) {
 		
 		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
@@ -747,7 +825,18 @@ var Rester = {
 					'<div class="menuItemDetailsPrice">Price: ' + price + '</div></div>');
 			}
 		});
-	}, 
+	},
+
+	loadMenuItemPage: function() {
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			key: "menu"+Rester.getLocation(),
+			expDays: 1,
+			success: Rester.createMenuItem,
+			error: function() {
+				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
+			}});
+	},
 	
 	loadEventsPage: function() {
 		console.log("Rester.loadEventsPage() :: Loading events.");
@@ -762,41 +851,14 @@ var Rester = {
 		console.log("Rester.loadPicturesPage() :: Loading pictures from " + 
 			Rester.proxyURL + Rester.getLocProp('picturesURL'));
 		
-		var exp = Rester.getProp("picturesExpiration"+Rester.getLocation());
-		var today = new Date();
-		
-		if (exp == null || today >= exp) {
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('picturesURL'),
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					if (data == null) {
-						data = Rester.getProp("pictures"+Rester.getLocation());
-						if (data == null) {
-							Rester.setStatusMsg("There are currently no photo galleries available. Please check back later.");
-							return;
-						}
-					} else {
-						var expiration=new Date();
-						expiration.setDate(expiration.getDate()+1);
-						Rester.setProp("picturesExpiration"+Rester.getLocation(), expiration);
-						Rester.setProp("pictures"+Rester.getLocation(), data);
-					}
-					Rester.createGalleryList(data);
-				},
-				error: function() {
-					var data = Rester.getProp("pictures"+Rester.getLocation());
-					if (data == null) {
-						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-						return;
-					}
-					Rester.createGalleryList(data);
-				}
-			});
-		} else {
-			Rester.createGalleryList(Rester.getProp("pictures"+Rester.getLocation()));
-		}
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp("picturesURL"),
+			key: "pictures"+Rester.getLocation(),
+			expDays: 1,
+			success: Rester.createGalleryList,
+			error: function() {
+				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+			}});
 	},
 
 	createGalleryList: function(data) {
@@ -809,51 +871,6 @@ var Rester = {
 		});
 		$('#galleryList').listview('refresh');
 	},
-	
-	loadPicturesGalleryPage: function(e) {
-
-		var gallery = Rester.getProp("galleryURL");
-
-		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxyURL + gallery);
-		console.log("Rester.loadPicturesGalleryPage() :: Storing gallery as " + encodeURI(gallery));
-				
-		var exp = Rester.getProp(encodeURI(gallery)+"Expiration");
-		var today = new Date();
-		
-		if (exp == null || today >= exp) {
-		
-			$.ajax({
-				url: Rester.proxyURL + gallery,
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					if (data == null) {
-						data = Rester.getProp(encodeURI(gallery));
-						if (data == null) {
-							Rester.setStatusMsg("There are currently no photos available. Please check back later.");
-							return;
-						}
-					} else {
-						var expiration=new Date();
-						expiration.setDate(expiration.getDate()+1);
-						Rester.setProp(encodeURI(gallery)+"Expiration", expiration);
-						Rester.setProp(encodeURI(gallery), data);
-					}
-					Rester.createPicturesGallery(data);
-				},
-				error: function() {
-					var data = Rester.getProp(encodeURI(gallery));
-					if (data == null) {
-						Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-						return;
-					}
-					Rester.createPicturesGallery(data);
-				}
-			});
-		} else {
-			Rester.createPicturesGallery(Rester.getProp(encodeURI(gallery)));
-		}
-	}, 
 	
 	createPicturesGallery: function(data) {
 		var text = "";
@@ -876,51 +893,34 @@ var Rester = {
 		}
 	},
 	
+	loadPicturesGalleryPage: function() {
+
+		var gallery = Rester.getProp("galleryURL");
+
+		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxyURL + gallery);
+			
+		Rester.loadData({
+			url: Rester.proxyURL + gallery,
+			key: encodeURI(gallery),
+			expDays: 1,
+			success: Rester.createPicturesGallery,
+			error: function() {
+				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
+			}});
+	}, 
+	
 	loadMusicPage: function() {
 		
 		console.log("Rester.loadMusicPage() :: Loading music page.");
-	
-		var exp = Rester.getProp("musicExpiration"+Rester.getLocation());
-		var today = new Date();
 		
-		if (exp == null || today >= exp) {
-					
-			$.ajax({
-				url: Rester.proxyURL + Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
-				timeout: Rester.ajaxTimeout,
-				dataType: Rester.dataType,
-				success: function(data) {
-					
-					if (data == null) {
-						data = Rester.getProp("music"+Rester.getLocation());
-						if (data == null) {
-							Rester.setStatusMsg("There are currently no tracks available. Please check back later.");
-							return;
-						}
-					} else {
-						var expiration=new Date();
-						expiration.setDate(expiration.getDate()+1);
-						Rester.setProp("musicExpiration"+Rester.getLocation(), expiration);
-						Rester.setProp("music"+Rester.getLocation(), data);
-					}
-				
-					data = eval(data);
-					Rester.createTrackList(data);
-				
-				},
-				error: function() {
-					var data = Rester.getProp("music"+Rester.getLocation());
-					if (data == null) {
-						Rester.setStatusMsg("Tracklist will be shown when a network connection is available.");
-						return;
-					}
-					data = eval(data);
-					Rester.createTrackList(data);
-				}
-			});
-		} else {
-			Rester.createTrackList(eval(Rester.getProp("music"+Rester.getLocation())));
-		}
+		Rester.loadData({
+			url: Rester.proxyURL + Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
+			key: "music"+Rester.getLocation(),
+			expDays: 1,
+			success: Rester.createTrackList,
+			error: function() {
+				Rester.setStatusMsg("Tracklist will be shown when a network connection is available.");
+			}});
 	},
 	
 	createTrackList: function(data) {
@@ -929,6 +929,7 @@ var Rester = {
 		var audioURL = "";
 		var avatarURL = "";
 		var newHTML = "";
+		data = eval(data);
 		for (var i = 0; i < data.length; i++) {
 				audioTitle = data[i].title;
 				artworkURL = data[i].artwork_url;
