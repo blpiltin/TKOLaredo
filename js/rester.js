@@ -618,11 +618,12 @@ var Rester = {
 				if (!Rester.online) {
 					if (options.error) { 
 						options.error(); 
-						return;
 					}
+					return;
 				}
 			} else {
 				if (options.success) { options.success(data); }
+				return;
 			}
 		} 
 		
