@@ -4,20 +4,15 @@ var MapsLoader = {
 	
 	readyCallback: null,
 	
-	init: function () {
-		document.addEventListener("deviceready", MapsLoader.setup, false);
-		MapsLoader.setup();
-	},
-
-	setup: function() {
+	init: function() {
 		
-		console.log("MapsLoader.setup() :: Setting up Google maps loader.");
-				
-	   	if (MapsLoader.state == "" || MapsLoader.state == "error") {
+		if (MapsLoader.state == "" || MapsLoader.state == "error") {
 			MapsLoader.load();
 		}
 		
-	    document.addEventListener("deviceready", function(e) {
+		console.log("MapsLoader.setup() :: Setting up Google maps loader.");
+				
+	    document.addEventListener("online", function(e) {
 	        if (MapsLoader.state == "" || MapsLoader.state == "error") {
 	            MapsLoader.load();
 	        }

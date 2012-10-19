@@ -192,6 +192,10 @@ var Facebook = {
 
 	createPost: function() {
 
+		if (!Rester.online) {
+			$.mobile.changePage("index.html");
+			alert("You must be online to use this feature.");
+		}
 		// Define our message!
 		var msg = $("#fbStatusText").val();
 

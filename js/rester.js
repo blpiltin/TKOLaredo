@@ -151,24 +151,20 @@ var Rester = {
 
 	onPause: function() {
 	    console.log("Rester.onPause()");
-		alert("Got pause event!");
 	},
 	
 	onResume: function() {
 	    console.log("Rester.onResume()");
-		alert("Got resume event!");
 	},
 	
 	onOnline: function() {
 		console.log("Rester.onOnline()");
-		alert("Got online event!");
-		// Rester.online = true;
+		Rester.online = true;
 	},
 	
 	onOffline: function() {
 		console.log("Rester.onOffline()");
-		alert("Got offline event!");
-		// Rester.online = false;
+		Rester.online = false;
 	},
 
 	fixWindow: function() {
@@ -706,6 +702,11 @@ var Rester = {
 	},
 	
 	loadSharePage: function() {
+		if (!Rester.online) {
+			$.mobile.changePage("index.html");
+			alert("You must be online to use this feature.");
+			return;
+		}
 		Facebook.bodyLoad();
 	},
 	
@@ -963,7 +964,7 @@ var Rester = {
 		//   	url: 'lib/soundmanager2/swf/',
 		// });
 		
-		if (Rester.smReady) {
+		if (Rester.smReady && Rester.online) {
 			Rester.initMusicTrack();
 		  	Rester.scTrack = soundManager.createSound({
 		      id: Rester.getProp("audioTitle"),
@@ -971,10 +972,13 @@ var Rester = {
 		    });
 		    Rester.playMusicTrack();
 		} else {
-			Rester.setStatusMsg("Music is not currently supported on your device.");
 			$('#pauseBtn').hide(); 
 			$('#playBtn').hide();
-			$('#playerWidget').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
+			if (Rester.online) {
+				$('#playerWidget').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
+			} else {
+				$('#playerWidget').html("You must be online to use this feature.");
+			}
 			console.log("Rester.loadMusicPlayerPage() :: soundManager.ok() failed.");
 		}
 		
