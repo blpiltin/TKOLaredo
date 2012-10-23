@@ -46,91 +46,60 @@
 		console.log("facebookWall() :: graphUser url="+graphUSER+" graphPosts url="+graphPOSTS);
 		
 		var wall = this;
-				
-		if (Rester.isExpired("events"+Rester.getLocation())) {
 		
-			$.when($.getJSON(graphUSER),$.getJSON(graphPOSTS)).done(function(user,posts){
+		// if (Rester.isExpired("events"+Rester.getLocation()) && Rester.online) {
 			
-				// user[0] contains information about the user (name and picture);
-				// posts[0].data is an array with wall posts;
-			
+		Rester.loadData({
+			url: graphUSER,
+			key: "eventsUser"+Rester.getLocation(),
+			expHours: 1,
+			dataType: "json",
+			success: function(user) {
+
 				var fb = {
 					user : user[0],
 					posts : []
 				};
 
-				console.log("facebookWall() :: received " + posts[0].data.length + " posts.");
-				
-				$.each(posts[0].data,function(){
-				
-					// We only show links and statuses from the posts feed:
-					// if((this.type != 'link' && this.type!='status') || (!this.message && !this.story)){
-					// 				return true;
-					// 			}
-			
-					// Copying the user avatar to each post, so it is
-					// easier to generate the templates:
-					// if (fb.user.picture === "") {
-					// 				this.from.picture = Rester.getLocProp('fbPicture');
-					// 			} else {
-					// 				this.from.picture = fb.user.picture;
-					// 			}
-					// 			
-					// 			console.debug('wallscript()', 'picture=' + this.from.picture);
-					// this.from.picture = Rester.getLocProp('fbPicture');
-					this.from.picture = graphPICTURE;
-					
-					// Converting the created_time (a UNIX timestamp) to
-					// a relative time offset (e.g. 5 minutes ago):
-					this.created_time = relativeTime(this.created_time*1000);
-				
-					// Converting URL strings to actual hyperlinks:
-					if (this.message == null) {
-						this.message = urlHyperlinks(this.story);
-					} else {
-						this.message = urlHyperlinks(this.message);
-					}
-					
-					fb.posts.push(this);
-				});
+				Rester.loadData({
+					url: graphPOSTS,
+					key: "events"+Rester.getLocation(),
+					expHours: 1,
+					dataType: "json",
+					success: function(posts) {
+						
+						$.each(posts.data,function(){
+							this.from.picture = graphPICTURE;
+							this.created_time = relativeTime(this.created_time*1000);
+							if (this.message == null) {
+								this.message = urlHyperlinks(this.story);
+							} else {
+								this.message = urlHyperlinks(this.message);
+							}
+							fb.posts.push(this);
+						});
+						
+						if (fb.posts.length == 0) {
+							$('#wall').html('<h3>There are no events to display.</h3>');
+							return this;
+						}
 
-				if (fb.posts.length == 0) {
-					$('#wall').html('<h3>There are no events to display.</h3>');
-					return this;
-				}
-			
-				// Rendering the templates:
-				$('#headingTpl').tmpl(fb.user).appendTo(wall);
-			
-				// Creating an unordered list for the posts:
-				var ul = $('<ul>').appendTo(wall);
-			
-				// Generating the feed template and appending:
-				$('#feedTpl').tmpl(fb.posts).appendTo(ul);
-			
-				Rester.cacheData("events"+Rester.getLocation(), fb);
-			
-			});
-			
-		} else {
-			
-			var fb = Rester.getCachedData("events"+Rester.getLocation());
-			
-			if (fb.posts.length == 0) {
-				$('#wall').html('<h3>There are no events to display.</h3>');
-				return this;
-			}
-		
-			// Rendering the templates:
-			$('#headingTpl').tmpl(fb.user).appendTo(wall);
-		
-			// Creating an unordered list for the posts:
-			var ul = $('<ul>').appendTo(wall);
-		
-			// Generating the feed template and appending:
-			$('#feedTpl').tmpl(fb.posts).appendTo(ul);
-			
-		}
+						// Rendering the templates:
+						$('#headingTpl').tmpl(fb.user).appendTo(wall);
+
+						// Creating an unordered list for the posts:
+						var ul = $('<ul>').appendTo(wall);
+
+						// Generating the feed template and appending:
+						$('#feedTpl').tmpl(fb.posts).appendTo(ul);
+					},
+					error: function() {
+						Rester.setStatusMsg("Events will be shown when a network connection is available.");
+					}});
+			},
+			error: function() {
+				Rester.setStatusMsg("Events will be shown when a network connection is available.");
+			}});
 		
 		return this;
 

@@ -11,7 +11,11 @@
 var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
-	DEBUG: 0,
+	DEBUG: 1,
+	
+	// The version number allows us to clear the cache between versions
+	// without user intervention in case there was an error with the dates.
+	VERSION: "v1",
 	
 	// Data for each individual restaurant location
 	locations: [
@@ -31,7 +35,7 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': 'jquery-mobile/tko-sb.css'
+			'customCSS': 'theme/tko-sb.css'
 		},
 		{
 			'name': 'Shiloh',
@@ -49,7 +53,7 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': 'jquery-mobile/tko-sh.css'
+			'customCSS': 'theme/tko-sh.css'
 		}
 	], 
 	
@@ -59,7 +63,7 @@ var Rester = {
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
 	
-	ajaxTimeout: 10000,
+	ajaxTimeout: 5000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
@@ -452,6 +456,10 @@ var Rester = {
 		MapsLoader.readyCallback = function() {
 			try {
 				Rester.createMap();
+			} catch (x) {
+				
+			}
+			try {
 				$('#map_canvas').gmap('refresh');
 			} catch (x) {
 				
@@ -560,20 +568,20 @@ var Rester = {
 	cacheData: function(key, data, expDays, expHours) {
 		var expiration = new Date();
 		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
-		if (expHours) { expiration.setDate(expiration.getHours() + expHours); }
-		Rester.setProp(key, data);
-		Rester.setProp(key+"exp", expiration);
+		if (expHours) { expiration.setHours(expiration.getHours() + expHours); }
+		Rester.setProp(key+Rester.VERSION, data);
+		Rester.setProp(key+"exp"+Rester.VERSION, expiration.toISOString());
 		return expiration;
 	},
 	
 	isExpired: function(key) {
-		expiration = Rester.getProp(key+"exp");
-		var now = new Date();
-		return (expiration == null || expiration == undefined || expiration >= now);
+		expiration = Rester.getProp(key+"exp"+Rester.VERSION);
+		var now = new Date().toISOString();
+		return (expiration == null || expiration == undefined || now >= expiration);
 	},
 	
 	getCachedData: function(key) {
-		return Rester.getProp(key);
+		return Rester.getProp(key+Rester.VERSION);
 	},
 	
 	/**
@@ -605,7 +613,9 @@ var Rester = {
 			error: null
 		}
 		
-		for (i in options) { options[i] = userOptions[i]; }
+		for (i in options) { 
+			options[i] = userOptions[i]; 			
+		}
 		
 		if (!Rester.isExpired(options.key) || !Rester.online) {
 			
