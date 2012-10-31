@@ -95,17 +95,19 @@
 }
 
 .menuItemDetailsImage {
-	height: 210px;
+	height: 65%;
 	margin: 10px auto;
 	overflow: hidden; 
 	float: left;
+	padding: 1px;
 }
 
 .menuItemDetailsImage img {
-	height: 208px;
+	height: 65%;
 	border: 1px solid red;
-	width: auto;
 	margin-right: 5px;
+	overflow: hidden; 
+/*	padding: 1px;*/
 }
 
 .menuItemDetailsDescription {
@@ -182,14 +184,19 @@ div#musicPlayerPage .ui-content {
 }
 
 #artworkImg img {
-	height: 50%;
-	margin: auto;
+	margin:auto;
+	width:auto;
+	height:50%;
 }
 
 #audioTitle {
 	white-space: pre-wrap;
 	text-align: center;
 	margin-top: 5px;
+}
+
+.musicBtn {
+	width: 100%;
 }
 
 /* remove text shadow from player text */

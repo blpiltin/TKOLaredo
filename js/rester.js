@@ -13,6 +13,10 @@ var Rester = {
 	// Change the debug level to 0 to suppress console output messages.
 	DEBUG: 0,
 	
+	// The version number allows us to clear the cache between versions
+	// without user intervention in case there was an error with the dates.
+	VERSION: "v1",
+	
 	// Data for each individual restaurant location
 	locations: [
 		{	
@@ -31,7 +35,7 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': 'jquery-mobile/tko-sb.css'
+			'customCSS': 'theme/tko-sb.css'
 		},
 		{
 			'name': 'Shiloh',
@@ -49,7 +53,7 @@ var Rester = {
 			'fbLink': "http://v2.laredoheat.com/?page_id=1846",
 			'fbPicture': "http://www.brianpiltin.com/tkolaredo/tko-logo.png",
 			'fbCaption': 'TKO rocks!',
-			'customCSS': 'jquery-mobile/tko-sh.css'
+			'customCSS': 'theme/tko-sh.css'
 		}
 	], 
 	
@@ -59,7 +63,7 @@ var Rester = {
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
 	
-	ajaxTimeout: 10000,
+	ajaxTimeout: 5000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
 	dataType: "jsonp",
@@ -82,6 +86,7 @@ var Rester = {
 	scClientID: '1ea1ab57eb6ef387a5c5b2d02484da4d',
 	// The currently playing scTrack
 	scTrack: null,
+	scBufferTimer: 0,
 	
 	winHeight: 0,
 	winWidth: 0,
@@ -452,6 +457,10 @@ var Rester = {
 		MapsLoader.readyCallback = function() {
 			try {
 				Rester.createMap();
+			} catch (x) {
+				
+			}
+			try {
 				$('#map_canvas').gmap('refresh');
 			} catch (x) {
 				
@@ -560,20 +569,20 @@ var Rester = {
 	cacheData: function(key, data, expDays, expHours) {
 		var expiration = new Date();
 		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
-		if (expHours) { expiration.setDate(expiration.getHours() + expHours); }
-		Rester.setProp(key, data);
-		Rester.setProp(key+"exp", expiration);
+		if (expHours) { expiration.setHours(expiration.getHours() + expHours); }
+		Rester.setProp(key+Rester.VERSION, data);
+		Rester.setProp(key+"exp"+Rester.VERSION, expiration.toISOString());
 		return expiration;
 	},
 	
 	isExpired: function(key) {
-		expiration = Rester.getProp(key+"exp");
-		var now = new Date();
-		return (expiration == null || expiration == undefined || expiration >= now);
+		expiration = Rester.getProp(key+"exp"+Rester.VERSION);
+		var now = new Date().toISOString();
+		return (expiration == null || expiration == undefined || now >= expiration);
 	},
 	
 	getCachedData: function(key) {
-		return Rester.getProp(key);
+		return Rester.getProp(key+Rester.VERSION);
 	},
 	
 	/**
@@ -605,7 +614,14 @@ var Rester = {
 			error: null
 		}
 		
-		for (i in options) { options[i] = userOptions[i]; }
+		// for (i in options) { 
+		// 	options[i] = userOptions[i]; 			
+		// }
+
+		// Merge options with the default settings
+        if (userOptions) {
+            $.extend(options, userOptions);
+        }
 		
 		if (!Rester.isExpired(options.key) || !Rester.online) {
 			
@@ -618,11 +634,12 @@ var Rester = {
 				if (!Rester.online) {
 					if (options.error) { 
 						options.error(); 
-						return;
 					}
+					return;
 				}
 			} else {
 				if (options.success) { options.success(data); }
+				return;
 			}
 		} 
 		
@@ -954,33 +971,45 @@ var Rester = {
 	loadMusicPlayerPage: function() {
 		
 		console.log("Rester.loadMusicPlayerPage() :: Loading.");
-		
-		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
-		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		// $('#playerWidget a').attr('href', decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID);
-		// $('#playerWidget a').attr('title', Rester.getProp("audioTitle"));
-		// $('#playerWidget a').html(decodeURIComponent(Rester.getProp("audioTitle")));
 	
-		// $('#playerWidget p').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		
-		// soundManager.setup({
-		//   	url: 'lib/soundmanager2/swf/',
-		// });
-		
+		$('#artworkImg').html('<img src="' + 
+			decodeURIComponent(Rester.getProp("artworkURL")).replace("large", "crop") + '"></img>');
+		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
+	
 		if (Rester.smReady && Rester.online) {
 			Rester.initMusicTrack();
+			$('#playerStatus').html("Buffering");
 		  	Rester.scTrack = soundManager.createSound({
-		      id: Rester.getProp("audioTitle"),
-		      url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID
+		      	id: Rester.getProp("audioTitle"),
+		      	url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID,
+		      	onbufferchange: function() {
+		      		Rester.updateSoundState(this);
+    			},
+    			whileloading: function() {
+		      		Rester.updateSoundState(this);
+    			},
+    			whileplaying: function() {
+		      		Rester.updateSoundState(this);
+    			},
+				onfinish: function() {
+				    $('#pauseBtn').hide();
+					$('#playBtn').show();
+					$('#playerStatus').html("Paused");
+					if (Rester.scTrack != null) {
+						Rester.scTrack.pause();
+						Rester.scTrack.setPosition(0);
+						Rester.scBufferTimer = 0;
+					}
+				}
 		    });
 		    Rester.playMusicTrack();
 		} else {
 			$('#pauseBtn').hide(); 
 			$('#playBtn').hide();
 			if (Rester.online) {
-				$('#playerWidget').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
+				$('#playerStatus').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
 			} else {
-				$('#playerWidget').html("You must be online to use this feature.");
+				$('#playerStatus').html("You must be online to use this feature.");
 			}
 			console.log("Rester.loadMusicPlayerPage() :: soundManager.ok() failed.");
 		}
@@ -1015,7 +1044,8 @@ var Rester = {
 		if (Rester.scTrack != null) {
 			Rester.scTrack.play();
 			$('#playBtn').hide();
-			$('#pauseBtn').show(); 
+			$('#pauseBtn').show();
+			$('#playerStatus').html("Playing");
 		}
 	},
 	
@@ -1024,6 +1054,7 @@ var Rester = {
 			Rester.scTrack.pause();
 			$('#pauseBtn').hide(); 
 			$('#playBtn').show();
+			$('#playerStatus').html("Paused");
 		}
 	},
 	
@@ -1032,9 +1063,24 @@ var Rester = {
 			if (Rester.scTrack != null) {
 				Rester.scTrack.destruct();
 				Rester.scTrack = null;
+				Rester.scBufferTimer = 0;
 			}
 		} catch (x) {
 			console.log("Rester.initMusicTrack() :: problem destroying track.");
+		}
+	},
+
+	updateSoundState: function(sound) {
+		if (sound.isBuffering) {
+			if (!sound.paused) {
+				$('#playerStatus').html("Buffering");
+			}
+		} else {
+			if (sound.paused) {
+				$('#playerStatus').html("Paused");
+			} else {
+				$('#playerStatus').html("Playing");
+			}
 		}
 	}
 };

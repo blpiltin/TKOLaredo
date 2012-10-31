@@ -2,9 +2,9 @@
     <widget xmlns = "http://www.w3.org/ns/widgets"
         xmlns:gap = "http://phonegap.com/ns/1.0"
         id        = "com.brianpiltin.TKOLaredo"
-        versionCode="2" 
-        version   = "0.9.11">
-
+        versionCode="5" 
+        version   = "1.0">
+        
     <!-- versionCode is optional and Android only -->
 
     <name>TKO Laredo</name>
