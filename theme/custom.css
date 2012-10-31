@@ -184,14 +184,19 @@ div#musicPlayerPage .ui-content {
 }
 
 #artworkImg img {
-	height: 50%;
-	margin: auto;
+	margin:auto;
+	width:auto;
+	height:50%;
 }
 
 #audioTitle {
 	white-space: pre-wrap;
 	text-align: center;
 	margin-top: 5px;
+}
+
+.musicBtn {
+	width: 100%;
 }
 
 /* remove text shadow from player text */

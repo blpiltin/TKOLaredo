@@ -86,6 +86,7 @@ var Rester = {
 	scClientID: '1ea1ab57eb6ef387a5c5b2d02484da4d',
 	// The currently playing scTrack
 	scTrack: null,
+	scBufferTimer: 0,
 	
 	winHeight: 0,
 	winWidth: 0,
@@ -613,9 +614,14 @@ var Rester = {
 			error: null
 		}
 		
-		for (i in options) { 
-			options[i] = userOptions[i]; 			
-		}
+		// for (i in options) { 
+		// 	options[i] = userOptions[i]; 			
+		// }
+
+		// Merge options with the default settings
+        if (userOptions) {
+            $.extend(options, userOptions);
+        }
 		
 		if (!Rester.isExpired(options.key) || !Rester.online) {
 			
@@ -965,33 +971,45 @@ var Rester = {
 	loadMusicPlayerPage: function() {
 		
 		console.log("Rester.loadMusicPlayerPage() :: Loading.");
-		
-		$('#artworkImg').html('<img src="' + decodeURIComponent(Rester.getProp("artworkURL")) + '"></img>');
-		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		// $('#playerWidget a').attr('href', decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID);
-		// $('#playerWidget a').attr('title', Rester.getProp("audioTitle"));
-		// $('#playerWidget a').html(decodeURIComponent(Rester.getProp("audioTitle")));
 	
-		// $('#playerWidget p').html(decodeURIComponent(Rester.getProp("audioTitle")));
-		
-		// soundManager.setup({
-		//   	url: 'lib/soundmanager2/swf/',
-		// });
-		
+		$('#artworkImg').html('<img src="' + 
+			decodeURIComponent(Rester.getProp("artworkURL")).replace("large", "crop") + '"></img>');
+		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
+	
 		if (Rester.smReady && Rester.online) {
 			Rester.initMusicTrack();
+			$('#playerStatus').html("Buffering");
 		  	Rester.scTrack = soundManager.createSound({
-		      id: Rester.getProp("audioTitle"),
-		      url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID
+		      	id: Rester.getProp("audioTitle"),
+		      	url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID,
+		      	onbufferchange: function() {
+		      		Rester.updateSoundState(this);
+    			},
+    			whileloading: function() {
+		      		Rester.updateSoundState(this);
+    			},
+    			whileplaying: function() {
+		      		Rester.updateSoundState(this);
+    			},
+				onfinish: function() {
+				    $('#pauseBtn').hide();
+					$('#playBtn').show();
+					$('#playerStatus').html("Paused");
+					if (Rester.scTrack != null) {
+						Rester.scTrack.pause();
+						Rester.scTrack.setPosition(0);
+						Rester.scBufferTimer = 0;
+					}
+				}
 		    });
 		    Rester.playMusicTrack();
 		} else {
 			$('#pauseBtn').hide(); 
 			$('#playBtn').hide();
 			if (Rester.online) {
-				$('#playerWidget').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
+				$('#playerStatus').html("We're sorry, but Soundcloud playback is not currently supported on your device.");
 			} else {
-				$('#playerWidget').html("You must be online to use this feature.");
+				$('#playerStatus').html("You must be online to use this feature.");
 			}
 			console.log("Rester.loadMusicPlayerPage() :: soundManager.ok() failed.");
 		}
@@ -1026,7 +1044,8 @@ var Rester = {
 		if (Rester.scTrack != null) {
 			Rester.scTrack.play();
 			$('#playBtn').hide();
-			$('#pauseBtn').show(); 
+			$('#pauseBtn').show();
+			$('#playerStatus').html("Playing");
 		}
 	},
 	
@@ -1035,6 +1054,7 @@ var Rester = {
 			Rester.scTrack.pause();
 			$('#pauseBtn').hide(); 
 			$('#playBtn').show();
+			$('#playerStatus').html("Paused");
 		}
 	},
 	
@@ -1043,9 +1063,24 @@ var Rester = {
 			if (Rester.scTrack != null) {
 				Rester.scTrack.destruct();
 				Rester.scTrack = null;
+				Rester.scBufferTimer = 0;
 			}
 		} catch (x) {
 			console.log("Rester.initMusicTrack() :: problem destroying track.");
+		}
+	},
+
+	updateSoundState: function(sound) {
+		if (sound.isBuffering) {
+			if (!sound.paused) {
+				$('#playerStatus').html("Buffering");
+			}
+		} else {
+			if (sound.paused) {
+				$('#playerStatus').html("Paused");
+			} else {
+				$('#playerStatus').html("Playing");
+			}
 		}
 	}
 };
