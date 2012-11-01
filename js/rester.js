@@ -11,11 +11,11 @@
 var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
-	DEBUG: 0,
+	DEBUG: 1,
 	
 	// The version number allows us to clear the cache between versions
 	// without user intervention in case there was an error with the dates.
-	VERSION: "v1",
+	DB_VERSION: "v3",
 	
 	// Data for each individual restaurant location
 	locations: [
@@ -92,23 +92,55 @@ var Rester = {
 	winWidth: 0,
 	androidScrollFix: false,
 	
-	db: new Lawnchair({adapter: 'dom', name:'db'}, function(store) {
-		console.log("Rester.db :: Database created succesfully. Using DOM adapter.");
-	}),
-	
-	setProp: function(id, value) {
-		Rester.db.save({key: id, val: value});
+	// The lawnchair based database for our properties and cache.
+	db: null, 
+
+	setProp: function(id, value, callback) {
+		Rester.db.save({key: id+Rester.DB_VERSION, val: value}, callback());
 	},
 	
-	getProp: function(id) {
-		var value = undefined;
-		Rester.db.get(id, function(obj) {
-			if (obj === undefined || obj === null || obj === "") { 
-				return undefined; 
+	getProp: function(id, callback) {
+		var value = "";
+		Rester.db.get(id+Rester.DB_VERSION, callback(obj));
+	},
+
+	isValid: function(data) {
+		if (typeof data !== 'undefined' && data !== undefined && data !== null) {
+			if (typeof data !== 'string') {
+				if (!$.isArray(data)) {
+					return true;
+				} else if (data.length === 0) {
+					return false;
+				} else {
+					return true;
+				}
+			} else if (data === '') {
+				return false;
+			} else {
+				return true;
 			}
-			value = obj.val;
-		});
-		return value;
+		} else {
+			return false;
+		}
+	},
+	
+	cacheData: function(id, data, expDays, expHours) {
+		var expiration = new Date();
+		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
+		if (expHours) { expiration.setHours(expiration.getHours() + expHours); }
+		Rester.setProp({key: id, val: data});
+		Rester.setProp({key: id+"exp", val: expiration.toISOString()});
+		return expiration;
+	},
+
+	isExpired: function(id) {
+		var expiration = Rester.getProp(id+"exp");
+		var now = new Date().toISOString();
+		return (typeof expiration === 'undefined' || now >= expiration);
+	},
+	
+	getCachedData: function(id) {
+		return Rester.getProp(id);
 	},
 	
 	/**
@@ -127,7 +159,13 @@ var Rester = {
 	 * Get the contents of JSON or XML data depending on the type.
 	 */
 	getDataContents: function(data) {
-		return (typeof data === 'string') ? data : data.contents;
+		if (typeof data === 'string' || $.isArray(data)) {
+			return data;
+		}
+		if (data.contents) {
+			return data.contents;
+		}
+		return data;
 	},
 
 	/**
@@ -226,7 +264,7 @@ var Rester = {
 		Rester.fixScroller();
 	},
 
-	proxyTest: function() {
+	proxyTest: function(callback) {
 		if (!Rester.online) {
 			console.log("Rester.proxyTest() :: Using proxy server.");
 			return;
@@ -269,9 +307,10 @@ var Rester = {
 	initLocation: function() {
 		var loc = Rester.getLocation();
 		console.log("Rester.initLocation() :: Initializing location. loc="+loc);
-		if (loc == null) {
+		if (typeof loc === 'undefined') {
 			console.log("Rester.initLocation() :: Location undefined.");
 			Rester.setLocation(0);
+			console.log("Rester.initLocation() :: Location set to "+Rester.getLocation());
 		}
 	},
 	
@@ -286,16 +325,30 @@ var Rester = {
 	getLocProp: function(prop) {
 		return Rester.locations[Rester.getLocation()][prop];
 	},
-	
-	// Rester Constructor
-	init: function() {
+
+	initDB: function(callback) {
 		if (!Rester.DEBUG) { 
 			console.log = function() {} 
 		}
-		Rester.proxyTest();
-		Rester.initLocation();
-		Rester.initSoundManager();
-		Rester.bindEvents();
+		Rester.db = new Lawnchair({adapters: ['dom', 'webkit-sqlite'], name:'db'}, function(store) {
+			var testObj = {test:"ok"};
+			store.save({key: "test", val: "ok"}, function(obj) {
+				console.log("Rester.initDB() :: key: test, value: "+(obj) ? obj.val : obj);
+				if (callback && typeof(callback) === "function") {  
+        			callback();  
+    			}  
+			});
+		});
+	},
+	
+	// Rester Constructor
+	init: function(callback) {
+		Rester.initDB(function() {
+			Rester.proxyTest();
+			Rester.initLocation();
+			Rester.initSoundManager();
+			Rester.bindEvents();
+		});
 	},
 	
 	// Bind Event Listeners
@@ -528,7 +581,7 @@ var Rester = {
 			Rester.cacheData("map"+Rester.getLocation(), $('#map_canvas').get(), 0, 0);
 		} catch (x) {
 			var map = Rester.getCachedData("map"+Rester.getLocation());
-			if (map == null) {
+			if (!map) {
 				console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
 				return;
 			}
@@ -566,25 +619,6 @@ var Rester = {
 		}
 	},
 	
-	cacheData: function(key, data, expDays, expHours) {
-		var expiration = new Date();
-		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
-		if (expHours) { expiration.setHours(expiration.getHours() + expHours); }
-		Rester.setProp(key+Rester.VERSION, data);
-		Rester.setProp(key+"exp"+Rester.VERSION, expiration.toISOString());
-		return expiration;
-	},
-	
-	isExpired: function(key) {
-		expiration = Rester.getProp(key+"exp"+Rester.VERSION);
-		var now = new Date().toISOString();
-		return (expiration == null || expiration == undefined || now >= expiration);
-	},
-	
-	getCachedData: function(key) {
-		return Rester.getProp(key+Rester.VERSION);
-	},
-	
 	/**
 	 * Uses either the cache or ajax to load data from a specific source.
 	 * Options include:
@@ -614,10 +648,6 @@ var Rester = {
 			error: null
 		}
 		
-		// for (i in options) { 
-		// 	options[i] = userOptions[i]; 			
-		// }
-
 		// Merge options with the default settings
         if (userOptions) {
             $.extend(options, userOptions);
@@ -628,22 +658,21 @@ var Rester = {
 			console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
 			
 			data = Rester.getCachedData(options.key);
-			if (data == null) {
+			if (!Rester.isValid(data)) {
 				// Object not in cache.
 				console.log("Rester.loadData() :: error loading data from cache.");
 				if (!Rester.online) {
-					if (options.error) { 
-						options.error(); 
-					}
+					if (options.error) { options.error(); }
 					return;
 				}
 			} else {
+				console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
 				if (options.success) { options.success(data); }
 				return;
 			}
 		} 
 		
-		if (data == null) {
+		if (!Rester.isValid(data)) {
 			
 			console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
 			
@@ -655,10 +684,10 @@ var Rester = {
 					
 					console.log("Rester.loadData() :: ajax success.");
 
-					if (data == null) {
+					if (!Rester.isValid(data)) {
 						// Check to see if object is in cache first.
 						data = Rester.getCachedData(options.key);
-						if (data == null) {
+						if (!Rester.isValid(data)) {
 							// Object can't be loaded and not cached.
 							console.log("Rester.loadData() :: error loading data from url and cache.");
 							if (options.error) { options.error(); }
@@ -667,6 +696,7 @@ var Rester = {
 						if (options.success) { options.success(data); }
 					} else {
 						// Object successfully loaded
+						console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
 						Rester.cacheData(options.key, data, options.expDays, options.expHours);
 						if (options.success) { options.success(data); }
 					}
@@ -676,13 +706,14 @@ var Rester = {
 					console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
 
 					data = Rester.getCachedData(options.key);
-					if (data == null) {
+					if (!Rester.isValid(data)) {
 						// Object not in cache, this is a dead end.
 						console.log("Rester.loadData() :: error loading data from url and cache.");
 						if (options.error) { options.error(); }
 						return;
 					}
-					if (options.success) { options.error(data); }
+					console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
+					if (options.success) { options.success(data); }
 				}
 			});
 		}
@@ -768,7 +799,7 @@ var Rester = {
 		Rester.loadData({
 			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
 			key: "menu"+Rester.getLocation(),
-			expDays: 1,
+			expHours: 1,
 			success: Rester.createMenu,
 			error: function() {
 				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
@@ -808,7 +839,7 @@ var Rester = {
 		Rester.loadData({
 			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
 			key: "menu"+Rester.getLocation(),
-			expDays: 1,
+			expHours: 1,
 			success: Rester.createMenuCategories,
 			error: function() {
 				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
@@ -852,7 +883,7 @@ var Rester = {
 		Rester.loadData({
 			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
 			key: "menu"+Rester.getLocation(),
-			expDays: 1,
+			expHours: 1,
 			success: Rester.createMenuItem,
 			error: function() {
 				Rester.setStatusMsg("Menu will be shown when a network connection is available.");
@@ -945,12 +976,14 @@ var Rester = {
 	},
 	
 	createTrackList: function(data) {
+
 		var audioTitle = "";
 		var artworkURL = "";
 		var audioURL = "";
 		var avatarURL = "";
 		var newHTML = "";
-		data = eval(data);
+
+		data = eval(Rester.getDataContents(data));
 		for (var i = 0; i < data.length; i++) {
 				audioTitle = data[i].title;
 				artworkURL = data[i].artwork_url;

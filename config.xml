@@ -3,8 +3,8 @@
         xmlns:gap = "http://phonegap.com/ns/1.0"
         id        = "com.brianpiltin.TKOLaredo"
         versionCode="5" 
-        version   = "1.0">
-        
+        version   = "1.0.1">
+
     <!-- versionCode is optional and Android only -->
 
     <name>TKO Laredo</name>
