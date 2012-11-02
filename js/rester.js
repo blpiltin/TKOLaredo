@@ -6,7 +6,7 @@
  *
  * Author: Brian Piltin. Copyright (C) 2012. All rights reserved.
  */
-// "use strict";
+//"use strict";
 
 var Rester = {
 		
@@ -24,8 +24,7 @@ var Rester = {
 			'telephone': '956-729-8700',
 			'email': 'supervic@laredoheat.com',
 			'address': '4100 San Bernardo Avenue  Laredo, TX 78041',
-			'latitude': '27.536739',
-			'longitude': '-99.504507',
+			'latLong': {latitude: '27.536739', longitude: '-99.504507'},
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=1846',
 			'musicURL': 'http://api.soundcloud.com/users/vjdrock/tracks.json',
@@ -42,8 +41,7 @@ var Rester = {
 			'telephone': '956-568-0447',
 			'email': 'supervic@laredoheat.com',
 			'address': '520 Shiloh Dr Laredo TX 78045',
-			'latitude': '27.590219',
-			'longitude': '-99.482717',
+			'latLong': {latitude: '27.590219', longitude: '-99.482717'},
 			'menuURL': 'http://v2.laredoheat.com/?page_id=2227',
 			'picturesURL': 'http://v2.laredoheat.com/?page_id=2250',
 			'musicURL': 'http://api.soundcloud.com/users/vjdrock/tracks.json',
@@ -57,12 +55,25 @@ var Rester = {
 		}
 	], 
 	
+	// Keep the current location around so we don't need to get it from the db.
+	curLoc: 0,
+
+	// Variables used to transfer data between pages.
+	menuCategory: null,
+	menuItem: null,
+	galleryURL: null,
+	audioURL: null,
+	audioTitle: null,
+	artworkURL: null,
+
+	// Keep track of when we go on or offline.
 	online: true,
 	
 	// The URL for the proxy server to convert html to jsonp
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
 	
+	// The timeout in milliseconds for ajax calls
 	ajaxTimeout: 5000,
 	
 	// proxyURL: "http://query.yahooapis.com/v1/public/yql",
@@ -95,52 +106,70 @@ var Rester = {
 	// The lawnchair based database for our properties and cache.
 	db: null, 
 
+	/**
+	 * Test to see if the data passed in is valid.
+	 * Params:
+	 *	data: the data to test for validity.
+	 * Return:
+	 * 	true if the data is valid (not undefined), false otherwise.
+	 */
+	isValid: function(data) {
+		return (typeof(data) !== 'undefined' && data !== null);
+	},
+
+	isFunction: function(func) {
+		return (func && typeof(func) === "function");
+	},
+	
 	setProp: function(id, value, callback) {
-		Rester.db.save({key: id+Rester.DB_VERSION, val: value}, callback());
+		Rester.db.save({key: id+Rester.DB_VERSION, val: value}, function(obj) {
+			if (Rester.isFunction(callback)) {
+				callback(obj.val);
+			}
+		});
 	},
 	
 	getProp: function(id, callback) {
-		var value = "";
-		Rester.db.get(id+Rester.DB_VERSION, callback(obj));
+		Rester.db.get(id+Rester.DB_VERSION, function(obj) {
+			if (Rester.isFunction(callback)) {
+				callback((Rester.isValid(obj)) ? obj.val : obj);
+			}
+		});
 	},
 
-	isValid: function(data) {
-		if (typeof data !== 'undefined' && data !== undefined && data !== null) {
-			if (typeof data !== 'string') {
-				if (!$.isArray(data)) {
-					return true;
-				} else if (data.length === 0) {
-					return false;
-				} else {
-					return true;
-				}
-			} else if (data === '') {
-				return false;
-			} else {
-				return true;
-			}
-		} else {
-			return false;
-		}
-	},
-	
-	cacheData: function(id, data, expDays, expHours) {
+	cacheData: function(id, data, expDays, expHours, callback) {
 		var expiration = new Date();
 		if (expDays) { expiration.setDate(expiration.getDate() + expDays); }
 		if (expHours) { expiration.setHours(expiration.getHours() + expHours); }
-		Rester.setProp({key: id, val: data});
-		Rester.setProp({key: id+"exp", val: expiration.toISOString()});
-		return expiration;
-	},
-
-	isExpired: function(id) {
-		var expiration = Rester.getProp(id+"exp");
-		var now = new Date().toISOString();
-		return (typeof expiration === 'undefined' || now >= expiration);
+		Rester.setProp(id+"exp", expiration.toISOString(), function() {
+			Rester.setProp(id, data, function(data) {
+				if (Rester.isFunction(callback)) {
+					callback(data);
+				}
+			});
+		});
 	},
 	
-	getCachedData: function(id) {
-		return Rester.getProp(id);
+	/**
+	 * Get data from the cache if it hasn't expired yet.
+	 * Params:
+	 *	id: the id of the cached data to return.
+	 *	callback: the callback function to call when the data has been 
+	 *		retrieved. Will pass in "undefined" on expired as well.
+	 */
+	getCachedData: function(id, callback, forceLoad) {
+		Rester.getProp(id+"exp", function(expiration) {
+			var now = new Date().toISOString();
+			if ((Rester.isValid(expiration) && now < expiration) || forceLoad === 'true') {
+				Rester.getProp(id, function(val) {
+					if (Rester.isFunction(callback)) {
+						callback(val);
+					}
+				});
+			} else if (Rester.isFunction(callback)) {
+				callback();
+			}
+		});
 	},
 	
 	/**
@@ -159,7 +188,7 @@ var Rester = {
 	 * Get the contents of JSON or XML data depending on the type.
 	 */
 	getDataContents: function(data) {
-		if (typeof data === 'string' || $.isArray(data)) {
+		if (typeof(data) === 'string' || $.isArray(data)) {
 			return data;
 		}
 		if (data.contents) {
@@ -285,41 +314,47 @@ var Rester = {
 		});
 	},
 		
-	getBasePath: function() {
-		if (Rester.getProp('basePath') == null) {
-			Rester.setProp('basePath', $.mobile.path.get(window.location.href));
-		}
-		console.log("Rester.getBasePath() :: basePath="+Rester.getProp('basePath'));
-		return Rester.getProp('basePath');
+	getBasePath: function(callback) {
+		Rester.getProp('basePath', function(val) {
+			if (!Rester.isValid(val)) {
+				Rester.setProp('basePath', $.mobile.path.get(window.location.href));
+			}
+			if (Rester.isFunction(callback)) {
+				callback(val);
+			}
+		});
 	},
 	
-	getFacebookToken: function() {
-		if (!Rester.isExpired('fbToken')) {
-			return Rester.getCachedData('fbToken');
-		}
-		return null;
+	getFacebookToken: function(callback) {
+		Rester.getCachedData('fbToken', callback);
 	},
 	
-	setFacebookToken: function(token) {
-		Rester.cacheData('fbToken', token, 1, 0);
+	setFacebookToken: function(token, callback) {
+		Rester.cacheData('fbToken', token, 1, 0, callback);
 	},
 	
-	initLocation: function() {
-		var loc = Rester.getLocation();
-		console.log("Rester.initLocation() :: Initializing location. loc="+loc);
-		if (typeof loc === 'undefined') {
-			console.log("Rester.initLocation() :: Location undefined.");
-			Rester.setLocation(0);
-			console.log("Rester.initLocation() :: Location set to "+Rester.getLocation());
-		}
+	initLocation: function(callback) {
+		Rester.getProp('location', function(val) {
+			console.log("Rester.initLocation() :: Initializing location. loc="+val);
+			if (!Rester.isValid(val)) {
+				console.log("Rester.initLocation() :: Location undefined.");
+				Rester.setProp('location', 0);
+				Rester.curLoc = 0;
+			} else {
+				Rester.curLoc = val;
+			}
+			if (Rester.isFunction(callback)) {
+				callback(val);
+			}
+		});
 	},
 	
 	getLocation: function() {
-		return Rester.getProp('location');
+		return Rester.curLoc;
 	},
 	
 	setLocation: function(toLocation) {
-		Rester.setProp('location', toLocation);
+		Rester.curLoc = toLocation;
 	},
 	
 	getLocProp: function(prop) {
@@ -328,26 +363,30 @@ var Rester = {
 
 	initDB: function(callback) {
 		if (!Rester.DEBUG) { 
-			console.log = function() {} 
+			console.log = function() {};
 		}
-		Rester.db = new Lawnchair({adapters: ['dom', 'webkit-sqlite'], name:'db'}, function(store) {
+		Rester.db = new Lawnchair({name:'db'}, function(store) {
 			var testObj = {test:"ok"};
 			store.save({key: "test", val: "ok"}, function(obj) {
-				console.log("Rester.initDB() :: key: test, value: "+(obj) ? obj.val : obj);
-				if (callback && typeof(callback) === "function") {  
-        			callback();  
-    			}  
+				console.log("Rester.initDB() :: key: test, value: "+(obj) ? obj.val : obj); 
 			});
+			if (Rester.isFunction(callback)) {  
+        		callback(store);
+    		} 
 		});
 	},
 	
 	// Rester Constructor
 	init: function(callback) {
-		Rester.initDB(function() {
+		Rester.initDB(function(store) {
 			Rester.proxyTest();
-			Rester.initLocation();
-			Rester.initSoundManager();
-			Rester.bindEvents();
+			Rester.initLocation(function() {
+				Rester.initSoundManager();
+				Rester.bindEvents();
+				if (Rester.isFunction(callback)) {  
+        			callback();  
+    			}
+			});
 		});
 	},
 	
@@ -548,10 +587,8 @@ var Rester = {
 		for (var i = 0; i < Rester.locations.length; i++) {
 			if (Rester.locations[i].name === e.currentTarget.innerHTML) {
 				if (i !== Rester.getLocation()) {
-					Rester.setLocation(i);
-					if (Rester.getLocProp('customCSS') !== '') {
-						$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
-					}
+					Rester.setProp('location', i);
+					Rester.curLoc = i;
 					Rester.loadHomePage();
 				}
 			}
@@ -559,33 +596,39 @@ var Rester = {
 	},
 	
 	setHeaderImage: function() {
-		if (Rester.getLocProp('customCSS') !== '') {
+		if (Rester.isValid(Rester.getLocProp('customCSS'))) {
 			$('#customLocationCSS').attr('href', Rester.getLocProp('customCSS'));
 		}
 	},
 	
 	setTelephoneLink: function() {
-		$('#telephone').attr('href', 'tel:' + Rester.getLocProp('telephone'));
+		if (Rester.isValid(Rester.getLocProp('telephone'))) {
+			$('#telephone').attr('href', 'tel:' + Rester.getLocProp('telephone'));
+		}
 	},
 	
 	setEmailLink: function() {
-		$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
+		if (Rester.isValid(Rester.getLocProp('email'))) {
+			$('#email').attr('href', 'mailto:' + Rester.getLocProp('email'));
+		}
 	},
 	
 	createMap: function() {
 		try {
 			$('#map_canvas').gmap('destroy');
-			var loc = new google.maps.LatLng(Rester.getLocProp('latitude'), Rester.getLocProp('longitude'));
+			var latLong = Rester.getLocProp('latLong');
+			var loc = new google.maps.LatLng(latLong.latitude, latLong.longitude);
 			$('#map_canvas').gmap({'center': loc, 'zoom': 15});
 			$('#map_canvas').gmap('addMarker', {'position': loc });
-			Rester.cacheData("map"+Rester.getLocation(), $('#map_canvas').get(), 0, 0);
+			// Rester.cacheData("map"+Rester.getLocation(), $('#map_canvas'), 0, 0);
 		} catch (x) {
-			var map = Rester.getCachedData("map"+Rester.getLocation());
-			if (!map) {
-				console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
-				return;
-			}
-			$(map);
+			// Rester.getCachedData("map"+Rester.getLocation(), function(map) {
+			// 	if (!Rester.isValid(map)) {
+			// 		console.log("Rester.createMap() :: Google maps not loaded. Could not create map.");
+			// 	} else {
+			// 		$(map);
+			// 	}
+			// });
 		}
     },
 	
@@ -646,82 +689,103 @@ var Rester = {
 			dataType: Rester.dataType,
 			success: null,
 			error: null
-		}
+		};
 		
 		// Merge options with the default settings
         if (userOptions) {
             $.extend(options, userOptions);
         }
 		
-		if (!Rester.isExpired(options.key) || !Rester.online) {
-			
-			console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
-			
-			data = Rester.getCachedData(options.key);
-			if (!Rester.isValid(data)) {
-				// Object not in cache.
-				console.log("Rester.loadData() :: error loading data from cache.");
-				if (!Rester.online) {
-					if (options.error) { options.error(); }
-					return;
-				}
-			} else {
-				console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
-				if (options.success) { options.success(data); }
-				return;
-			}
-		} 
-		
-		if (!Rester.isValid(data)) {
-			
-			console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
-			
-			$.ajax({
-				url: options.url,
-				timeout: options.timeout,
-				dataType: options.dataType,
-				success: function(data) {
-					
-					console.log("Rester.loadData() :: ajax success.");
+		console.log("Rester.loadData() :: Attempting to load data from cache using key: "+options.key);
 
-					if (!Rester.isValid(data)) {
-						// Check to see if object is in cache first.
-						data = Rester.getCachedData(options.key);
-						if (!Rester.isValid(data)) {
-							// Object can't be loaded and not cached.
-							console.log("Rester.loadData() :: error loading data from url and cache.");
-							if (options.error) { options.error(); }
-							return;
-						}
-						if (options.success) { options.success(data); }
+		Rester.getCachedData(options.key, function(data) {
+
+			if (Rester.isValid(data)) {
+
+				// The data in the cache is valid, use that.
+				console.log("Rester.loadData() :: successfully loaded data from cache.");
+				if (Rester.isFunction(options.success)) { options.success(data); }
+
+			} else if (!Rester.online) {
+
+				// Attempt to force load the data.
+				console.log("Rester.loadData() :: "+
+					"Attempting to load expired data from cache using key: "+options.key);
+				Rester.getCachedData(options.key, function(data) {
+					if (Rester.isValid(data)) {
+						// The data in the cache is valid, use that.
+						console.log("Rester.loadData() :: successfully loaded data from cache.");
+						if (Rester.isFunction(options.success)) { options.success(data); }
 					} else {
-						// Object successfully loaded
-						console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
-						Rester.cacheData(options.key, data, options.expDays, options.expHours);
-						if (options.success) { options.success(data); }
-					}
-				},
-				error: function() {
-					// We couldn't load through ajax, so try to load data from the cache.
-					console.log("Rester.loadData() :: Loading data from cache using key: " + options.key);
-
-					data = Rester.getCachedData(options.key);
-					if (!Rester.isValid(data)) {
-						// Object not in cache, this is a dead end.
+						// Object can't be loaded and not cached.
 						console.log("Rester.loadData() :: error loading data from url and cache.");
-						if (options.error) { options.error(); }
-						return;
+						if (Rester.isFunction(options.error)) { options.error(); }
 					}
-					console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
-					if (options.success) { options.success(data); }
-				}
-			});
-		}
+				}, true);
+
+			} else {
+
+				// Attempt to refresh data.
+				console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
+
+				$.ajax({
+					url: options.url,
+					timeout: options.timeout,
+					dataType: options.dataType,
+					success: function(data) {
+						
+						console.log("Rester.loadData() :: ajax success.");
+
+						if (!Rester.isValid(data)) {
+
+							// Attempt to force load the data.
+							console.log("Rester.loadData() :: "+
+								"Attempting to load expired data from cache using key: "+options.key);
+							Rester.getCachedData(options.key, function(data) {
+								if (Rester.isValid(data)) {
+									// The data in the cache is valid, use that.
+									console.log("Rester.loadData() :: successfully loaded data from cache.");
+									if (Rester.isFunction(options.success)) { options.success(data); }
+								} else {
+									// Object can't be loaded and not cached.
+									console.log("Rester.loadData() :: error loading data from url and cache.");
+									if (Rester.isFunction(options.error)) { options.error(); }
+								}
+							}, true);
+
+						} else {
+							// Object successfully loaded
+							console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
+							Rester.cacheData(options.key, data, options.expDays, options.expHours);
+							if (options.success) { options.success(data); }
+						}
+					},
+
+					error: function() {
+						// Attempt to force load the data.
+						console.log("Rester.loadData() :: "+
+							"Attempting to load expired data from cache using key: "+options.key);
+						Rester.getCachedData(options.key, function(data) {
+							if (Rester.isValid(data)) {
+								// The data in the cache is valid, use that.
+								console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
+								if (Rester.isFunction(options.success)) { options.success(data); }
+							} else {
+								// Object can't be loaded and not cached.
+								console.log("Rester.loadData() :: error loading data from url and cache.");
+								if (Rester.isFunction(options.error)) { options.error(); }
+							}
+						}, true);
+					}
+				});
+			}
+		});
 	},
 	
 	loadHomePage: function() {
 		
-		console.log("Rester.loadHomePage() :: Loading pictures from " + Rester.proxyURL + Rester.getLocProp('picturesURL'));
+		console.log("Rester.loadHomePage() :: Loading pictures from "+
+			Rester.proxyURL+Rester.getLocProp('picturesURL'));
 		
 		Rester.setHeaderImage();
 		Rester.setTelephoneLink();
@@ -730,7 +794,7 @@ var Rester = {
 		Rester.createMap();
 		
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp("picturesURL"),
+			url: Rester.proxyURL+Rester.getLocProp("picturesURL"),
 			key: "pictures"+Rester.getLocation(),
 			expDays: 1,
 			success: function(data) {
@@ -786,7 +850,7 @@ var Rester = {
 			}
 			newHTML += '<li class="menuCategory">' + 
 			'<a href="menucategory.html" ' + 
-			'onclick=\'Rester.setProp("menuCategory", "' + encodeURIComponent(val) + '");\'>' + 
+			'onclick=\'Rester.menuCategory = "' + encodeURIComponent(val) + '";\'>' + 
 			'<img src="' + images[i] + '"/><div class="menuCategoryTitle">' + Rester.toTitleCase(val) + '</div></a></li>';
 		});
 		$('#menuCategories').html(newHTML);
@@ -794,10 +858,11 @@ var Rester = {
 	},
 	
 	loadMenuPage: function() {
-		console.log("Rester.loadMenuPage() :: Loading menu from " + Rester.proxyURL + Rester.getLocProp('menuURL'));
+		console.log("Rester.loadMenuPage() :: Loading menu from "+
+			Rester.proxyURL+Rester.getLocProp('menuURL'));
 		
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			url: Rester.proxyURL+Rester.getLocProp("menuURL"),
 			key: "menu"+Rester.getLocation(),
 			expHours: 1,
 			success: Rester.createMenu,
@@ -807,7 +872,7 @@ var Rester = {
 	},
 
 	createMenuCategories: function(data) {
-		var menuCategory = decodeURIComponent(Rester.getProp("menuCategory"));
+		var menuCategory = decodeURIComponent(Rester.menuCategory);
 
 		var description = "";
 		var category = "";
@@ -825,7 +890,7 @@ var Rester = {
 				image = $(this).find('img').attr('src');
 				newHTML += '<li class="menuItem">' +
 					'<a href="menuitem.html" ' + 
-					'onclick=\'Rester.setProp("menuItem", "' + encodeURIComponent(item) + '");\'>' +
+					'onclick=\'Rester.menuItem = "' + encodeURIComponent(item) + '";\'>' +
 					'<img src="' + image + '"/>' + '<div class="menuItemTitle">' + Rester.toTitleCase(item) + '</div>' + 
 					'<div class="menuItemPrice">$' + price + '</div></a></li>';
 			}
@@ -849,7 +914,7 @@ var Rester = {
 	
 	createMenuItem: function(data) {
 		
-		var menuItem = decodeURIComponent(Rester.getProp("menuItem"));
+		var menuItem = decodeURIComponent(Rester.menuItem);
 		
 		var title = "";
 		var alt = "";
@@ -917,7 +982,7 @@ var Rester = {
 		$($(Rester.getDataContents(data)).find('div.ngg-album').get().reverse()).each(function(i) {
 			$('#galleryList').append('<li class="galleryList">' + 
 				'<a href="picturesgallery.html" ' + 
-				'onclick=\'Rester.setProp("galleryURL", "' + $(this).find('a').attr('href') + '");\'>' +
+				'onclick=\'Rester.galleryURL = "' + $(this).find('a').attr('href') + '";\'>' +
 				'<img src="' + $(this).find('img').attr('src') + '"/><div class="galleryTitle">' + 
 				Rester.toTitleCase($(this).find('div.ngg-albumtitle').text()) + '</div></a></li>');
 		});
@@ -947,7 +1012,7 @@ var Rester = {
 	
 	loadPicturesGalleryPage: function() {
 
-		var gallery = Rester.getProp("galleryURL");
+		var gallery = Rester.galleryURL;
 
 		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxyURL + gallery);
 			
@@ -991,11 +1056,11 @@ var Rester = {
 				newHTML += '<li class="audioTrack">' + 
 				'<a href="musicplayer.html" ' + 
 				'onclick=\'' + 
-					'Rester.setProp("audioURL", "' + encodeURIComponent(audioURL) + '");' + 
-					'Rester.setProp("audioTitle", "' + encodeURIComponent(audioTitle) + '");' + 
-					'Rester.setProp("artworkURL", "' + encodeURIComponent(artworkURL) + '");\'>' + 
+					'Rester.audioURL = "' + encodeURIComponent(audioURL) + '";' + 
+					'Rester.audioTitle = "' + encodeURIComponent(audioTitle) + '";' + 
+					'Rester.artworkURL = "' + encodeURIComponent(artworkURL) + '";\'>' + 
 				'<img src="' + artworkURL + '"/><div class="trackTitle">' + audioTitle + '</div></a></li>';
-		};
+		}
 		// $('#avatar').html('<img src="'+data[0].user.avatar_url+'"></img>'+data[0].user.username);
 		$('#trackList').html(newHTML);
 		$('#trackList').listview('refresh');
@@ -1006,15 +1071,15 @@ var Rester = {
 		console.log("Rester.loadMusicPlayerPage() :: Loading.");
 	
 		$('#artworkImg').html('<img src="' + 
-			decodeURIComponent(Rester.getProp("artworkURL")).replace("large", "crop") + '"></img>');
-		$('#audioTitle').html(decodeURIComponent(Rester.getProp("audioTitle")));
+			decodeURIComponent(Rester.artworkURL).replace("large", "crop") + '"></img>');
+		$('#audioTitle').html(decodeURIComponent(Rester.audioTitle));
 	
 		if (Rester.smReady && Rester.online) {
 			Rester.initMusicTrack();
 			$('#playerStatus').html("Buffering");
 		  	Rester.scTrack = soundManager.createSound({
-		      	id: Rester.getProp("audioTitle"),
-		      	url: decodeURIComponent(Rester.getProp("audioURL"))+'?client_id=' + Rester.scClientID,
+		      	id: Rester.audioTitle,
+		      	url: decodeURIComponent(Rester.audioURL)+'?client_id=' + Rester.scClientID,
 		      	onbufferchange: function() {
 		      		Rester.updateSoundState(this);
     			},
@@ -1046,10 +1111,6 @@ var Rester = {
 			}
 			console.log("Rester.loadMusicPlayerPage() :: soundManager.ok() failed.");
 		}
-		
-		// $('#playerWidget').html(
-		// 	'<audio src="' + decodeURIComponent(Rester.getProp("audioURL")) + 
-		// 		'?client_id=' + Rester.scClientID + '" preload="auto" autoplay="autoplay"></audio>');
 	},
 	
 	initSoundManager: function() {
