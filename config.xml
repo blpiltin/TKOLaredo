@@ -30,7 +30,7 @@
 	<preference name="exit-on-suspend" value="true" />
 	<preference name="show-splash-screen-spinner" value="true" />
 	<preference name="auto-hide-splash-screen" value="true" />
-	<preference name="android-minSdkVersion" value="10" />
+	<preference name="android-minSdkVersion" value="8" />
 	<preference name="android-installLocation" value="auto" />
 	-->
 	

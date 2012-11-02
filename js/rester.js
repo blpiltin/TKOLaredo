@@ -11,11 +11,11 @@
 var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
-	DEBUG: 1,
+	DEBUG: 0,
 	
 	// The version number allows us to clear the cache between versions
 	// without user intervention in case there was an error with the dates.
-	DB_VERSION: "v3",
+	DB_VERSION: "v2",
 	
 	// Data for each individual restaurant location
 	locations: [
