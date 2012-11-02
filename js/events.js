@@ -70,7 +70,9 @@
 						
 						$.each(posts.data,function(){
 							this.from.picture = graphPICTURE;
-							this.created_time = relativeTime(this.created_time*1000);
+							if (!Number(this.created_time) === 'NaN') {
+								this.created_time = relativeTime(this.created_time*1000);
+							}
 							if (this.message == null) {
 								this.message = urlHyperlinks(this.story);
 							} else {
@@ -114,7 +116,7 @@
 	function relativeTime(time){
 		
 		// Adapted from James Herdman's http://bit.ly/e5Jnxe
-		
+	
 		var period = new Date(time);
 		var delta = new Date() - period;
 

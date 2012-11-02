@@ -83,11 +83,10 @@ var Facebook = {
 					console.log("Facebook.facebookLocChanged()", "Login success.");
 					
 					// We store our token in a localStorage Item called facebook_token
-					Rester.setFacebookToken(data.split("=")[1]);
-
-					window.plugins.childBrowser.close();
-
-					Facebook.bodyLoad();
+					Rester.setFacebookToken(data.split("=")[1], function() {
+						window.plugins.childBrowser.close();
+						Facebook.bodyLoad();
+					});
 				},
 				error: function(xhr, ajaxOptions, thrownError) {
 		
@@ -115,25 +114,27 @@ var Facebook = {
 
 	post: function(_fbType, params) {
 
-		// Our Base URL which is composed of our request type and our localStorage facebook_token
-		var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + Rester.getFacebookToken();
+		Rester.getFacebookToken(function(token) {
+			// Our Base URL which is composed of our request type and our localStorage facebook_token
+			var url = 'https://graph.facebook.com/me/' + _fbType + '?access_token=' + token;
 
-		console.log("Facebook.post() :: Creating a post at url: "+url);
+			console.log("Facebook.post() :: Creating a post at url: "+url);
 		
-		// Build our URL
-		for (var key in params) {
-			if (key == "message") {
-				// We will want to escape any special characters here vs encodeURI
-				url = url + "&" + key + "=" + escape(params[key]);
-			} else {
-				url = url + "&" + key + "=" + encodeURIComponent(params[key]);
+			// Build our URL
+			for (var key in params) {
+				if (key == "message") {
+					// We will want to escape any special characters here vs encodeURI
+					url = url + "&" + key + "=" + escape(params[key]);
+				} else {
+					url = url + "&" + key + "=" + encodeURIComponent(params[key]);
+				}
 			}
-		}
 
-		var req = Facebook.share(url);
+			var req = Facebook.share(url);
 
-		// Our success callback
-		req.onload = Facebook.success();
+			// Our success callback
+			req.onload = Facebook.success();
+		});
 	},
 
 	success: function() {
@@ -156,40 +157,41 @@ var Facebook = {
 
 	bodyLoad: function() {
 		
-		var token = Rester.getFacebookToken();
+		Rester.getFacebookToken(function(token) {
+			// First lets check to see if we have a user or not
+			if (!Rester.isValid(token)) {
+				
+				console.log("Facebook.bodyLoad()", "Don't have local token yet.");
+
+				$("#fbStatus").hide();			
+				$("#fbLoginArea").show();
+
+				$("#fbLoginButton").click(function() {
+					Facebook.init();
+				});
+			} else {
+				
+				console.log("Facebook.bodyLoad()", "Logged in.");
+				
+				$("#fbLoginArea").hide();
+				$("#fbStatus").show();
+
+				$("#fbStatusButton").click(function() {
+					if ($("#fbStatusText").val() == "") {
+						alert("Make sure you've filled out the message area!");
+					} else {
+						// hide our assets
+						$("#fbStatusText").hide();
+						$("#fbStatusButton").hide();
+
+						// show our info
+						$("#fbInfo").show();
+						Facebook.createPost();
+					}
+				});
+			}
+		});
 		
-		// First lets check to see if we have a user or not
-		if (token == null) {
-			
-			console.log("Facebook.bodyLoad()", "Don't have local token yet.");
-
-			$("#fbStatus").hide();			
-			$("#fbLoginArea").show();
-
-			$("#fbLoginButton").click(function() {
-				Facebook.init();
-			});
-		} else {
-			
-			console.log("Facebook.bodyLoad()", "Logged in.");
-			
-			$("#fbLoginArea").hide();
-			$("#fbStatus").show();
-
-			$("#fbStatusButton").click(function() {
-				if ($("#fbStatusText").val() == "") {
-					alert("Make sure you've filled out the message area!");
-				} else {
-					// hide our assets
-					$("#fbStatusText").hide();
-					$("#fbStatusButton").hide();
-
-					// show our info
-					$("#fbInfo").show();
-					Facebook.createPost();
-				}
-			});
-		}
 	},
 
 	createPost: function() {

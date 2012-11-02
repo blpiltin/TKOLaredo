@@ -54,7 +54,7 @@ var Rester = {
 			'customCSS': 'theme/tko-sh.css'
 		}
 	], 
-	
+
 	// Keep the current location around so we don't need to get it from the db.
 	curLoc: 0,
 
@@ -89,7 +89,8 @@ var Rester = {
 	
 	// Facebook access token
 	fbAccessToken: '512052125490353|_kF0WEqfTTkguYp853eydB0Bayk',
-	
+	fbToken: null,
+
 	// Soundmanager2 initialized flag
 	smReady: false,
 	
@@ -114,7 +115,15 @@ var Rester = {
 	 * 	true if the data is valid (not undefined), false otherwise.
 	 */
 	isValid: function(data) {
-		return (typeof(data) !== 'undefined' && data !== null);
+		var valid = true;
+		if (typeof(data) === 'undefined' || data === null) {
+			valid = false;
+		} else if ($.isArray(data) && data.length === 0) {
+			valid = false;
+		} else if (typeof(data) === 'string' && data === '') {
+			valid = false;
+		}
+		return valid;
 	},
 
 	isFunction: function(func) {
@@ -173,28 +182,134 @@ var Rester = {
 	},
 	
 	/**
-	 * Change the case of a string to title case.
-	 */
-	toTitleCase: function(str) {
-		if (str == str.toLowerCase()) {
-			return str.replace(/\w\S*/g, function(txt) {
-				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-			});
-		} 
-		return str;
-	},
-	
-	/**
 	 * Get the contents of JSON or XML data depending on the type.
 	 */
 	getDataContents: function(data) {
 		if (typeof(data) === 'string' || $.isArray(data)) {
 			return data;
 		}
-		if (data.contents) {
+		if (data && data.contents) {
 			return data.contents;
 		}
 		return data;
+	},
+
+	/**
+	 * Uses either the cache or ajax to load data from a specific source.
+	 * Options include:
+	 *	key: the key used to cache this object. (required)
+	 * 	expDays: the number of days to expire the cache.
+	 *	expHours: the number of hours to expire the cahce.
+	 *	url: the url used to retreive this object from the network. (required)
+	 * 	timeout: the timeout used when calling ajax before error.
+	 *	dataType: the dataType to use for the ajax call.
+	 * 	success: a callback function with the data as a parameter if
+	 * 		we were able to load from either the cache or the url. (required)
+	 * 	error: a callback function to execute if the data could not
+	 * 		be loaded.
+	 */ 
+	loadData: function(userOptions) {
+		
+		var options = {
+			key: "",
+			expDays: 0,
+			expHours: 0,
+			url: "",
+			timeout: Rester.ajaxTimeout,
+			dataType: Rester.dataType,
+			success: null,
+			error: null
+		};
+		
+		// Merge options with the default settings
+        if (userOptions) {
+            $.extend(options, userOptions);
+        }
+		
+		console.log("Rester.loadData() :: Attempting to load data from cache using key: "+options.key);
+
+		Rester.getCachedData(options.key, function(data) {
+
+			if (Rester.isValid(data)) {
+
+				// The data in the cache is valid, use that.
+				console.log("Rester.loadData() :: successfully loaded data from cache.");
+				if (Rester.isFunction(options.success)) { options.success(data); }
+
+			} else if (!Rester.online) {
+
+				// Attempt to force load the data.
+				console.log("Rester.loadData() :: "+
+					"Attempting to load expired data from cache using key: "+options.key);
+				Rester.getCachedData(options.key, function(data) {
+					if (Rester.isValid(data)) {
+						// The data in the cache is valid, use that.
+						console.log("Rester.loadData() :: successfully loaded data from cache.");
+						if (Rester.isFunction(options.success)) { options.success(data); }
+					} else {
+						// Object can't be loaded and not cached.
+						console.log("Rester.loadData() :: error loading data from url and cache.");
+						if (Rester.isFunction(options.error)) { options.error(); }
+					}
+				}, true);
+
+			} else {
+
+				// Attempt to refresh data.
+				console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
+
+				$.ajax({
+					url: options.url,
+					timeout: options.timeout,
+					dataType: options.dataType,
+					success: function(data) {
+						
+						console.log("Rester.loadData() :: ajax success.");
+
+						if (!Rester.isValid(data)) {
+
+							// Attempt to force load the data.
+							console.log("Rester.loadData() :: "+
+								"Attempting to load expired data from cache using key: "+options.key);
+							Rester.getCachedData(options.key, function(data) {
+								if (Rester.isValid(data)) {
+									// The data in the cache is valid, use that.
+									console.log("Rester.loadData() :: successfully loaded data from cache.");
+									if (Rester.isFunction(options.success)) { options.success(data); }
+								} else {
+									// Object can't be loaded and not cached.
+									console.log("Rester.loadData() :: error loading data from url and cache.");
+									if (Rester.isFunction(options.error)) { options.error(); }
+								}
+							}, true);
+
+						} else {
+							// Object successfully loaded
+							console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
+							Rester.cacheData(options.key, data, options.expDays, options.expHours);
+							if (options.success) { options.success(data); }
+						}
+					},
+
+					error: function() {
+						// Attempt to force load the data.
+						console.log("Rester.loadData() :: "+
+							"Attempting to load expired data from cache using key: "+options.key);
+						Rester.getCachedData(options.key, function(data) {
+							if (Rester.isValid(data)) {
+								// The data in the cache is valid, use that.
+								console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
+								if (Rester.isFunction(options.success)) { options.success(data); }
+							} else {
+								// Object can't be loaded and not cached.
+								console.log("Rester.loadData() :: error loading data from url and cache.");
+								if (Rester.isFunction(options.error)) { options.error(); }
+							}
+						}, true);
+					}
+				});
+			}
+		});
 	},
 
 	/**
@@ -226,7 +341,14 @@ var Rester = {
 	},
 	
 	onResume: function() {
-	    console.log("Rester.onResume()");
+	    console.log("Rester.onResume() :: Active Page: "+$.mobile.activePage.attr('id'));
+	    var funcID =  
+	    	$.mobile.activePage.attr('id').charAt(0).toUpperCase()+
+	    	$.mobile.activePage.attr('id').slice(1);
+	    var funcString = 'Rester.load'+funcID+'();';
+	    console.log("Rester.onResume() :: Calling function: "+funcString);
+	    Rester.setStatusMsg("");
+	    eval(funcString);
 	},
 	
 	onOnline: function() {
@@ -239,33 +361,22 @@ var Rester = {
 		Rester.online = false;
 	},
 
+	/**
+	 * Change the case of a string to title case.
+	 */
+	toTitleCase: function(str) {
+		if (str == str.toLowerCase()) {
+			return str.replace(/\w\S*/g, function(txt) {
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		} 
+		return str;
+	},
+	
 	fixWindow: function() {
 		$(document).width($(window).width());
 		$('html').css("width", $(window).width());
 		$('body').css("width", $(window).width());
-	},
-	
-	fixScroller: function() {
-		var scrollMult = 1.0;
-		if (Rester.winHeight != 0) {
-			scrollMult = $(window).height() / Rester.winHeight;
-		}
-		if (scrollMult > 1.0 || Rester.androidScrollFix == true) {
-			// Fix for Android 2.2 and 2.3 weirdness
-			Rester.androidScrollFix = true;
-			return;
-		}
-		console.log("Rester.fixScroller() :: using a multiplier of " + scrollMult);
-		var scrollWidth = Rester.scrollWidth * scrollMult;
-		$('#scroller li').css("width", scrollWidth + 'px');
-		$('#wrapper').css('height', $(window).height() / 3 + 'px');
-		$('#scroller').css('height', $(window).height() / 3 + 'px');
-		$('#scroller li img').css('height', $(window).height() / 3 + 'px');
-		$('#wrapper').css("width", $(window).width() + 'px');
-		$('#scroller').css("width", scrollWidth * Rester.scrollSize + 'px');
-		if (window.myScroll != null) {
-			window.myScroll.refresh();
-		}
 	},
 	
 	/**
@@ -296,22 +407,31 @@ var Rester = {
 	proxyTest: function(callback) {
 		if (!Rester.online) {
 			console.log("Rester.proxyTest() :: Using proxy server.");
-			return;
-		}
-		$.ajax({
-			url: Rester.locations[0].picturesURL, 
-			dataType: "html",
-			async: false,
-			timeout: 5000,
-			success: function(data) {
-				Rester.proxyURL = "";
-				Rester.dataType = "html";
-				console.log("Rester.proxyTest() :: Not using proxy server.");
-			},
-			error: function(data) {
-				console.log("Rester.proxyTest() :: Using proxy server.");
+			if (Rester.isFunction(callback)) {
+				callback();
 			}
-		});
+		} else {
+			$.ajax({
+				url: Rester.locations[0].picturesURL, 
+				dataType: "html",
+				async: false,
+				timeout: 5000,
+				success: function(data) {
+					Rester.proxyURL = "";
+					Rester.dataType = "html";
+					console.log("Rester.proxyTest() :: Not using proxy server.");
+					if (Rester.isFunction(callback)) {
+						callback();
+					}
+				},
+				error: function(data) {
+					console.log("Rester.proxyTest() :: Using proxy server.");
+					if (Rester.isFunction(callback)) {
+						callback();
+					}
+				}
+			});
+		}
 	},
 		
 	getBasePath: function(callback) {
@@ -326,11 +446,19 @@ var Rester = {
 	},
 	
 	getFacebookToken: function(callback) {
-		Rester.getCachedData('fbToken', callback);
+		Rester.getCachedData('fbToken', function(data) {
+			if (Rester.isFunction(callback)) {
+				callback(data);
+			}
+		});
 	},
 	
 	setFacebookToken: function(token, callback) {
-		Rester.cacheData('fbToken', token, 1, 0, callback);
+		Rester.cacheData('fbToken', token, 1, 0, function(data) {
+			if (Rester.isFunction(callback)) {
+				callback(data);
+			}
+		});
 	},
 	
 	initLocation: function(callback) {
@@ -361,35 +489,6 @@ var Rester = {
 		return Rester.locations[Rester.getLocation()][prop];
 	},
 
-	initDB: function(callback) {
-		if (!Rester.DEBUG) { 
-			console.log = function() {};
-		}
-		Rester.db = new Lawnchair({name:'db'}, function(store) {
-			var testObj = {test:"ok"};
-			store.save({key: "test", val: "ok"}, function(obj) {
-				console.log("Rester.initDB() :: key: test, value: "+(obj) ? obj.val : obj); 
-			});
-			if (Rester.isFunction(callback)) {  
-        		callback(store);
-    		} 
-		});
-	},
-	
-	// Rester Constructor
-	init: function(callback) {
-		Rester.initDB(function(store) {
-			Rester.proxyTest();
-			Rester.initLocation(function() {
-				Rester.initSoundManager();
-				Rester.bindEvents();
-				if (Rester.isFunction(callback)) {  
-        			callback();  
-    			}
-			});
-		});
-	},
-	
 	// Bind Event Listeners
 	//
 	// Bind any events that are required on startup. Common events are:
@@ -420,6 +519,7 @@ var Rester = {
 
 		$('#homePage').live('pageinit', function(e) {
 			try {
+				console.log("#homePage.pageinit :: loading home page.");
 				Rester.loadHomePage();
 			} catch (x) {
 				alert("#homePage.pageinit :: " + x.message);
@@ -428,11 +528,14 @@ var Rester = {
 		
 		$('#homePage').live('pageshow', function(e) {
 			try {
+				console.log("#homePage.pageshow :: updating map and scroller.");
 				try {
 					$('#map_canvas').gmap('refresh');
 				} catch (x) {
 				}
-				if (window.myScroll != null) {
+				if (!Rester.isValid($('#thelist').html())) {
+					Rester.loadHomePage();
+				} else if (Rester.isValid(window.myScroll)) {
 					window.myScroll.refresh();
 				}
 			} catch (x) {
@@ -560,6 +663,39 @@ var Rester = {
 		};
 	},
 	
+	initDB: function(callback) {
+		Rester.db = new Lawnchair({name:'db'}, function(store) {
+			var testObj = {test:"ok"};
+			store.save({key: "test", val: "ok"}, function(obj) {
+				console.log("Rester.initDB() :: key: test, value: "+obj.val); 
+				if (Rester.isFunction(callback)) {  
+        			callback();
+    			}
+			});
+		});
+	},
+	
+	// Rester Constructor
+	init: function(callback) {
+
+		if (!Rester.DEBUG) { 
+			console.log = function() {};
+		}
+
+		Rester.initDB(function(store) {
+			Rester.initLocation(function() {
+				Rester.bindEvents();
+				Rester.initSoundManager();
+				Rester.proxyTest(function() {
+					if (Rester.isFunction(callback)) {  
+	        			callback();  
+	    			}
+	    			Rester.loadHomePage();
+				});
+			});
+		});
+	},
+	
 	createLocationMenu: function() {
 		console.log("Rester.createLocationMenu() :: Creating menu.");
 		var text = "";
@@ -632,6 +768,29 @@ var Rester = {
 		}
     },
 	
+	fixScroller: function() {
+		var scrollMult = 1.0;
+		if (Rester.winHeight != 0) {
+			scrollMult = $(window).height() / Rester.winHeight;
+		}
+		if (scrollMult > 1.0 || Rester.androidScrollFix == true) {
+			// Fix for Android 2.2 and 2.3 weirdness
+			Rester.androidScrollFix = true;
+			return;
+		}
+		console.log("Rester.fixScroller() :: using a multiplier of " + scrollMult);
+		var scrollWidth = Rester.scrollWidth * scrollMult;
+		$('#scroller ul li').css("width", scrollWidth + 'px');
+		$('#wrapper').css('height', $(window).height() / 3 + 'px');
+		$('#scroller').css('height', $(window).height() / 3 + 'px');
+		$('#scroller ul li img').css('height', $(window).height() / 3 + 'px');
+		$('#wrapper').css("width", $(window).width() + 'px');
+		$('#scroller').css("width", scrollWidth * Rester.scrollSize + 'px');
+		if (Rester.isValid(window.myScroll)) {
+			window.myScroll.refresh();
+		}
+	},
+
 	createScroller: function(data) {
 					
 		var style = "";
@@ -649,137 +808,21 @@ var Rester = {
 
 		if (text != '') {
 			$('#thelist').html(text);
-			if (window.myScroll != null) {
-				window.myScroll.destroy();
-			}
-			Rester.fixScroller();
-			window.myScroll = new iScroll('wrapper', {
-				snap: false,
-				momentum: true,
-				hScrollbar: false
-			});
-			console.log("Rester.createScroller() :: Scroller creation successful.");
-		}
-	},
-	
-	/**
-	 * Uses either the cache or ajax to load data from a specific source.
-	 * Options include:
-	 *	key: the key used to cache this object. (required)
-	 * 	expDays: the number of days to expire the cache.
-	 *	expHours: the number of hours to expire the cahce.
-	 *	url: the url used to retreive this object from the network. (required)
-	 * 	timeout: the timeout used when calling ajax before error.
-	 *	dataType: the dataType to use for the ajax call.
-	 * 	success: a callback function with the data as a parameter if
-	 * 		we were able to load from either the cache or the url. (required)
-	 * 	error: a callback function to execute if the data could not
-	 * 		be loaded.
-	 */ 
-	loadData: function(userOptions) {
-		
-		var data = null;
-		var	i = 0;
-		var options = {
-			key: "",
-			expDays: 0,
-			expHours: 0,
-			url: "",
-			timeout: Rester.ajaxTimeout,
-			dataType: Rester.dataType,
-			success: null,
-			error: null
-		};
-		
-		// Merge options with the default settings
-        if (userOptions) {
-            $.extend(options, userOptions);
-        }
-		
-		console.log("Rester.loadData() :: Attempting to load data from cache using key: "+options.key);
-
-		Rester.getCachedData(options.key, function(data) {
-
-			if (Rester.isValid(data)) {
-
-				// The data in the cache is valid, use that.
-				console.log("Rester.loadData() :: successfully loaded data from cache.");
-				if (Rester.isFunction(options.success)) { options.success(data); }
-
-			} else if (!Rester.online) {
-
-				// Attempt to force load the data.
-				console.log("Rester.loadData() :: "+
-					"Attempting to load expired data from cache using key: "+options.key);
-				Rester.getCachedData(options.key, function(data) {
-					if (Rester.isValid(data)) {
-						// The data in the cache is valid, use that.
-						console.log("Rester.loadData() :: successfully loaded data from cache.");
-						if (Rester.isFunction(options.success)) { options.success(data); }
-					} else {
-						// Object can't be loaded and not cached.
-						console.log("Rester.loadData() :: error loading data from url and cache.");
-						if (Rester.isFunction(options.error)) { options.error(); }
-					}
-				}, true);
-
-			} else {
-
-				// Attempt to refresh data.
-				console.log("Rester.loadData() :: Loading data from ajax at url: " + options.url);
-
-				$.ajax({
-					url: options.url,
-					timeout: options.timeout,
-					dataType: options.dataType,
-					success: function(data) {
-						
-						console.log("Rester.loadData() :: ajax success.");
-
-						if (!Rester.isValid(data)) {
-
-							// Attempt to force load the data.
-							console.log("Rester.loadData() :: "+
-								"Attempting to load expired data from cache using key: "+options.key);
-							Rester.getCachedData(options.key, function(data) {
-								if (Rester.isValid(data)) {
-									// The data in the cache is valid, use that.
-									console.log("Rester.loadData() :: successfully loaded data from cache.");
-									if (Rester.isFunction(options.success)) { options.success(data); }
-								} else {
-									// Object can't be loaded and not cached.
-									console.log("Rester.loadData() :: error loading data from url and cache.");
-									if (Rester.isFunction(options.error)) { options.error(); }
-								}
-							}, true);
-
-						} else {
-							// Object successfully loaded
-							console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
-							Rester.cacheData(options.key, data, options.expDays, options.expHours);
-							if (options.success) { options.success(data); }
-						}
-					},
-
-					error: function() {
-						// Attempt to force load the data.
-						console.log("Rester.loadData() :: "+
-							"Attempting to load expired data from cache using key: "+options.key);
-						Rester.getCachedData(options.key, function(data) {
-							if (Rester.isValid(data)) {
-								// The data in the cache is valid, use that.
-								console.log("Rester.loadData() :: successfully loaded data from cache: " + data);
-								if (Rester.isFunction(options.success)) { options.success(data); }
-							} else {
-								// Object can't be loaded and not cached.
-								console.log("Rester.loadData() :: error loading data from url and cache.");
-								if (Rester.isFunction(options.error)) { options.error(); }
-							}
-						}, true);
-					}
+			try {
+				if (Rester.isValid(window.myScroll)) {
+					window.myScroll.destroy();
+				}
+				Rester.fixScroller();
+				window.myScroll = new iScroll('wrapper', {
+					snap: false,
+					momentum: true,
+					hScrollbar: false
 				});
+				console.log("Rester.createScroller() :: Scroller creation successful.");
+			} catch(x) {
+				console.log("Rester.createScoller() :: Error initializing scroller: "+x);
 			}
-		});
+		}
 	},
 	
 	loadHomePage: function() {
@@ -792,7 +835,7 @@ var Rester = {
 		Rester.setEmailLink();
 		Rester.createLocationMenu();
 		Rester.createMap();
-		
+
 		Rester.loadData({
 			url: Rester.proxyURL+Rester.getLocProp("picturesURL"),
 			key: "pictures"+Rester.getLocation(),
@@ -813,7 +856,8 @@ var Rester = {
 			},
 			error: function() {
 				Rester.setStatusMsg("Photos will be shown when a network connection is available.");
-			}});
+			}
+		});
 	},
 	
 	loadSharePage: function() {

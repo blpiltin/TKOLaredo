@@ -45,7 +45,7 @@
 	overflow:hidden;*/
 }
 
-#scroller li {
+#scroller ul li {
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
 	-o-box-sizing: border-box;
@@ -67,7 +67,7 @@
 	margin-right:0px;
 }
 
-#scroller li img {
+#scroller ul li img {
 	height: 160px;
 	overflow:hidden;
 	padding: 0px;
