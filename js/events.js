@@ -70,7 +70,7 @@
 						
 						$.each(posts.data,function(){
 							this.from.picture = graphPICTURE;
-							if (!Number(this.created_time) === 'NaN') {
+							if (!isNaN(this.created_time)) {
 								this.created_time = relativeTime(this.created_time*1000);
 							}
 							if (this.message == null) {

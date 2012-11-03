@@ -12,11 +12,12 @@ var Rester = {
 		
 	// Change the debug level to 0 to suppress console output messages.
 	DEBUG: 0,
-	
+	FORCE_PROXY: true,
+
 	// The version number allows us to clear the cache between versions
 	// without user intervention in case there was an error with the dates.
-	DB_VERSION: "v2",
-	
+	DB_VERSION: "v1",
+		
 	// Data for each individual restaurant location
 	locations: [
 		{	
@@ -72,7 +73,7 @@ var Rester = {
 	// The URL for the proxy server to convert html to jsonp
 	proxyURL: "http://www.differentdezinellc.com/proxy.php?url=",
 	// proxyURL: "http://www.brianpiltin.com/proxy.php?proxy_url=",
-	
+
 	// The timeout in milliseconds for ajax calls
 	ajaxTimeout: 5000,
 	
@@ -169,7 +170,7 @@ var Rester = {
 	getCachedData: function(id, callback, forceLoad) {
 		Rester.getProp(id+"exp", function(expiration) {
 			var now = new Date().toISOString();
-			if ((Rester.isValid(expiration) && now < expiration) || forceLoad === 'true') {
+			if ((Rester.isValid(expiration) && now < expiration) || forceLoad) {
 				Rester.getProp(id, function(val) {
 					if (Rester.isFunction(callback)) {
 						callback(val);
@@ -185,13 +186,7 @@ var Rester = {
 	 * Get the contents of JSON or XML data depending on the type.
 	 */
 	getDataContents: function(data) {
-		if (typeof(data) === 'string' || $.isArray(data)) {
-			return data;
-		}
-		if (data && data.contents) {
-			return data.contents;
-		}
-		return data;
+		return (Rester.isValid(data) && Rester.isValid(data.contents)) ? data.contents : data;
 	},
 
 	/**
@@ -242,6 +237,7 @@ var Rester = {
 				console.log("Rester.loadData() :: "+
 					"Attempting to load expired data from cache using key: "+options.key);
 				Rester.getCachedData(options.key, function(data) {
+
 					if (Rester.isValid(data)) {
 						// The data in the cache is valid, use that.
 						console.log("Rester.loadData() :: successfully loaded data from cache.");
@@ -285,9 +281,9 @@ var Rester = {
 
 						} else {
 							// Object successfully loaded
-							console.log("Rester.loadData() :: successfully cached ata using key: "+options.key);
+							console.log("Rester.loadData() :: successfully cached data using key: "+options.key);
 							Rester.cacheData(options.key, data, options.expDays, options.expHours);
-							if (options.success) { options.success(data); }
+							if (Rester.isFunction(options.success)) { options.success(data); }
 						}
 					},
 
@@ -322,6 +318,10 @@ var Rester = {
 		} else {
 			return results[1] || 0;
 		}
+	},
+
+	proxifyURL: function(url) {
+		return (Rester.proxyURL === '') ? url : Rester.proxyURL+encodeURIComponent(url);
 	},
 	
 	setStatusMsg: function(text) {
@@ -405,12 +405,7 @@ var Rester = {
 	},
 
 	proxyTest: function(callback) {
-		if (!Rester.online) {
-			console.log("Rester.proxyTest() :: Using proxy server.");
-			if (Rester.isFunction(callback)) {
-				callback();
-			}
-		} else {
+		if (Rester.online && Rester.FORCE_PROXY === false) {
 			$.ajax({
 				url: Rester.locations[0].picturesURL, 
 				dataType: "html",
@@ -431,6 +426,11 @@ var Rester = {
 					}
 				}
 			});
+		} else {
+			console.log("Rester.proxyTest() :: Using proxy server.");
+			if (Rester.isFunction(callback)) {
+				callback();
+			}
 		}
 	},
 		
@@ -664,7 +664,7 @@ var Rester = {
 	},
 	
 	initDB: function(callback) {
-		Rester.db = new Lawnchair({name:'db'}, function(store) {
+		Rester.db = new Lawnchair({name:'db'+Rester.DB_VERSION}, function(store) {
 			var testObj = {test:"ok"};
 			store.save({key: "test", val: "ok"}, function(obj) {
 				console.log("Rester.initDB() :: key: test, value: "+obj.val); 
@@ -828,7 +828,7 @@ var Rester = {
 	loadHomePage: function() {
 		
 		console.log("Rester.loadHomePage() :: Loading pictures from "+
-			Rester.proxyURL+Rester.getLocProp('picturesURL'));
+			Rester.proxifyURL(Rester.getLocProp("picturesURL")));
 		
 		Rester.setHeaderImage();
 		Rester.setTelephoneLink();
@@ -837,16 +837,16 @@ var Rester = {
 		Rester.createMap();
 
 		Rester.loadData({
-			url: Rester.proxyURL+Rester.getLocProp("picturesURL"),
+			url: Rester.proxifyURL(Rester.getLocProp("picturesURL")),
 			key: "pictures"+Rester.getLocation(),
 			expDays: 1,
 			success: function(data) {
 				
 				var temp = $(Rester.getDataContents(data)).find('div.ngg-album').get();
 				var galleryURL = $(temp[temp.length - 1]).find('a').attr('href');
-				
+
 				Rester.loadData({
-					url: Rester.proxyURL + galleryURL,
+					url: Rester.proxifyURL(galleryURL),
 					key: "scroll"+Rester.getLocation(),
 					expDays: 1,
 					success: Rester.createScroller,
@@ -903,10 +903,10 @@ var Rester = {
 	
 	loadMenuPage: function() {
 		console.log("Rester.loadMenuPage() :: Loading menu from "+
-			Rester.proxyURL+Rester.getLocProp('menuURL'));
+			Rester.proxifyURL(Rester.getLocProp("menuURL")));
 		
 		Rester.loadData({
-			url: Rester.proxyURL+Rester.getLocProp("menuURL"),
+			url: Rester.proxifyURL(Rester.getLocProp("menuURL")),
 			key: "menu"+Rester.getLocation(),
 			expHours: 1,
 			success: Rester.createMenu,
@@ -916,8 +916,8 @@ var Rester = {
 	},
 
 	createMenuCategories: function(data) {
-		var menuCategory = decodeURIComponent(Rester.menuCategory);
 
+		var menuCategory = decodeURIComponent(Rester.menuCategory);
 		var description = "";
 		var category = "";
 		var item = "";
@@ -946,7 +946,7 @@ var Rester = {
 	loadMenuCategoryPage: function() {	
 		
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			url: Rester.proxifyURL(Rester.getLocProp("menuURL")),
 			key: "menu"+Rester.getLocation(),
 			expHours: 1,
 			success: Rester.createMenuCategories,
@@ -959,7 +959,6 @@ var Rester = {
 	createMenuItem: function(data) {
 		
 		var menuItem = decodeURIComponent(Rester.menuItem);
-		
 		var title = "";
 		var alt = "";
 		var attributes = "";
@@ -990,7 +989,7 @@ var Rester = {
 
 	loadMenuItemPage: function() {
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp("menuURL"),
+			url: Rester.proxifyURL(Rester.getLocProp("menuURL")),
 			key: "menu"+Rester.getLocation(),
 			expHours: 1,
 			success: Rester.createMenuItem,
@@ -1010,10 +1009,10 @@ var Rester = {
 
 	loadPicturesPage: function() {
 		console.log("Rester.loadPicturesPage() :: Loading pictures from " + 
-			Rester.proxyURL + Rester.getLocProp('picturesURL'));
+			Rester.proxifyURL(Rester.getLocProp("picturesURL")));
 		
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp("picturesURL"),
+			url: Rester.proxifyURL(Rester.getLocProp("picturesURL")),
 			key: "pictures"+Rester.getLocation(),
 			expDays: 1,
 			success: Rester.createGalleryList,
@@ -1034,6 +1033,7 @@ var Rester = {
 	},
 	
 	createPicturesGallery: function(data) {
+
 		var text = "";
 		var style = "";
 
@@ -1051,6 +1051,8 @@ var Rester = {
 				'enableMouseWheel': false,
 				'enableKeyboard': false
 			});
+		} else {
+			Rester.setStatusMsg("A connection error occurred. Please try again later.");
 		}
 	},
 	
@@ -1058,10 +1060,10 @@ var Rester = {
 
 		var gallery = Rester.galleryURL;
 
-		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxyURL + gallery);
+		console.log("Rester.loadPicturesGalleryPage() :: Loading gallery from " + Rester.proxifyURL(gallery));
 			
 		Rester.loadData({
-			url: Rester.proxyURL + gallery,
+			url: Rester.proxifyURL(gallery),
 			key: encodeURI(gallery),
 			expDays: 1,
 			success: Rester.createPicturesGallery,
@@ -1075,7 +1077,7 @@ var Rester = {
 		console.log("Rester.loadMusicPage() :: Loading music page.");
 		
 		Rester.loadData({
-			url: Rester.proxyURL + Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID,
+			url: Rester.proxifyURL(Rester.getLocProp('musicURL') + '?client_id=' + Rester.scClientID),
 			key: "music"+Rester.getLocation(),
 			expDays: 1,
 			success: Rester.createTrackList,
